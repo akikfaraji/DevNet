@@ -1,0 +1,103 @@
+{
+  "overfit": {
+    "initial_loss": 4.870590686798096,
+    "final_loss": 0.015751853585243225,
+    "reduction_pct": 99.67659254086082,
+    "no_nan_inf": true,
+    "verdict": "PASS"
+  },
+  "sparsity": {
+    "pathway_calls_per_block": 2,
+    "pathway_call_detail": {
+      "local": 2,
+      "low_rank": 0,
+      "ssm": 2
+    },
+    "pathway_sparsity": true,
+    "width_choices": [
+      32,
+      64,
+      256
+    ],
+    "width_flops_ratio": 0.5,
+    "width_sparsity": true,
+    "depth_active_per_layer": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "depth_sparsity": false,
+    "moe_top_k": 2,
+    "moe_num_experts": 4,
+    "moe_sparsity": true
+  },
+  "diversity": {
+    "pathway_unique": 2,
+    "pathway_distribution": [
+      0.28125,
+      0.0,
+      0.71875
+    ],
+    "pathway_entropy": 0.7028355598449707,
+    "pathway_entropy_ratio": 0.6397484964391263,
+    "width_unique": 2,
+    "width_distribution": [
+      0.59375,
+      0.40625
+    ],
+    "expert_unique": 4,
+    "expert_top_k": 2,
+    "expert_total": 4
+  },
+  "flops": {
+    "active_layers_mean": 4.0,
+    "active_width_mean": 45.0,
+    "attn_flops_per_layer_per_token": 24576,
+    "ffn_flops_per_layer_per_token": 11520,
+    "pathway_flops_per_layer_per_token": 4096,
+    "total_active_flops_per_token": 169024,
+    "dense_equivalent_flops_per_token": 385088,
+    "sparsity_ratio": 0.4389230513544956,
+    "flops_reduction_pct": 56.10769486455044
+  },
+  "wallclock": {
+    "v05_ms_per_call": 37.249187949964835,
+    "v04_ms_per_call": 39.780075999988185,
+    "delta_ms": -2.53088805002335,
+    "delta_pct": -6.362200137636996,
+    "config": "H=96, L=4, T=128, B=4"
+  },
+  "memory": {
+    "rss_before_mb": 516.34375,
+    "rss_after_mb": 529.3359375,
+    "rss_delta_mb": 12.9921875,
+    "total_params": 1092871,
+    "trainable_params": 1064914,
+    "param_mem_mb": 4.168972015380859,
+    "optim_mem_mb": 8.124649047851562,
+    "grad_mem_mb": 4.062324523925781,
+    "estimated_total_mb": 16.355945587158203
+  },
+  "v04_vs_v05": {
+    "changes": [
+      "FIX: eval routing collapse \u2014 added eval_routing_noise (default 0.15) to break deterministic top-1 collapse",
+      "REMOVE: dead ComputeController module (350 lines, never wired into model)",
+      "REMOVE: dead pathway_gate parameter from HASSBlock (received no gradients)",
+      "OPTIMIZE: sparse_pathway_dispatch \u2014 index_add_ instead of boolean scatter, cached wrapped fns"
+    ],
+    "test_count": {
+      "v04": 59,
+      "v05": 63,
+      "delta": 4
+    },
+    "eval_diversity_delta": {
+      "pathway_unique": "1 -> 2",
+      "width_unique": "1 -> 2",
+      "expert_unique": "2 -> 4"
+    },
+    "runtime_delta_ms": -2.53088805002335,
+    "runtime_delta_pct": -6.362200137636996,
+    "flops_reduction_pct": 56.10769486455044
+  }
+}
