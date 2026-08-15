@@ -1,0 +1,229 @@
+{
+  "phase": 18,
+  "description": "Architecture claims audit with precise status classification",
+  "status_definitions": {
+    "PROVEN": "Mathematically derived or verified by comprehensive testing with no known counterexamples",
+    "EMPIRICALLY VERIFIED": "Verified by measurement under specific conditions; may not hold in all configurations",
+    "CONDITIONALLY TRUE": "True under specific conditions (e.g., specific hyperparameters, scales, or configurations)",
+    "PARTIALLY IMPLEMENTED": "Code exists but is not fully wired into the model or has known gaps",
+    "NOT VERIFIED": "Not tested or measured",
+    "FALSE": "Claimed but not true (either was never true, or regressed)"
+  },
+  "status_counts": {
+    "PROVEN": 12,
+    "EMPIRICALLY VERIFIED": 5,
+    "PARTIALLY IMPLEMENTED": 3,
+    "FALSE": 2,
+    "FALSE (by design)": 1
+  },
+  "total_claims": 23,
+  "claims": [
+    {
+      "id": "SSM-1",
+      "claim": "SSM uses proper ZOH discretization for both A and B",
+      "status": "PROVEN",
+      "implementation": "discretize_zoh() in ssm_scan.py computes A_bar=exp(dt*A) and B_bar=((exp(dt*A)-1)/A)*B with Taylor fallback for small |dt*A|.",
+      "test": "tests/test_phase4_v04.py::test_ssm_zoh_discretization_stable; Phase 9 numerical equivalence (8 configs, fp32+bf16)",
+      "evidence": "All 8 numerical equivalence configs pass tolerance (fp32 <1e-4, bf16 <1e-2). Gradient equivalence verified for A_bar and B_bar (err < 1e-6).",
+      "limitations": "Only diagonal A is supported. Dense A would require matrix exponential."
+    },
+    {
+      "id": "SSM-2",
+      "claim": "SSM scan has O(L) sequential complexity",
+      "status": "PROVEN",
+      "implementation": "sequential_scan: Python loop over T, vectorized over B and N. T iterations.",
+      "test": "Phase 9.4 complexity analysis with empirical timing at T=64..2048",
+      "evidence": "Theoretical: O(T*N) work, O(T) depth, O(T*N) memory. Empirical: linear scaling confirmed.",
+      "limitations": "Sequential is the slowest of the three scans on CPU due to Python loop overhead."
+    },
+    {
+      "id": "SSM-3",
+      "claim": "Parallel scan has O(L log L) work and O(log L) depth (Hillis-Steele)",
+      "status": "PROVEN",
+      "implementation": "parallel_scan: log2(T) iterations, each touches all T elements. Pure PyTorch, no Python loop over T.",
+      "test": "Phase 9.4 complexity analysis",
+      "evidence": "Theoretical: O(T*log(T)*N) work, O(log T) depth, O(T*log(T)*N) memory. Empirical: faster than chunked on CPU at T=2048 (1.5ms vs 12ms) because no Python loop.",
+      "limitations": "On GPU, the O(T log T) work would make it slower than chunked for very large T. Memory is O(T log T) due to per-step clones for autograd safety."
+    },
+    {
+      "id": "SSM-4",
+      "claim": "Chunked scan has O(L) work with O(L/chunk + chunk) depth",
+      "status": "PROVEN",
+      "implementation": "chunked_scan: T/chunk_size Python iterations, each runs sequential_scan on a chunk.",
+      "test": "Phase 9.4",
+      "evidence": "Theoretical: O(T*N) work, O(T/chunk + chunk) depth, O(chunk*N) memory. Empirical: 12ms at T=2048, chunk=256.",
+      "limitations": "Python loop over T/chunk_size limits GPU parallelism. Optimal chunk_size depends on hardware."
+    },
+    {
+      "id": "SSM-5",
+      "claim": "SSM is numerically stable at long sequences (16K+)",
+      "status": "EMPIRICALLY VERIFIED",
+      "implementation": "chunked_scan with LayerNorm on states (ln_state in SSMPathway).",
+      "test": "Phase 9.3: T=1024, 4096, 16384 all produce finite states and gradients.",
+      "evidence": "T=16384: state_max=0.63, grad_max=5.89, all finite. No NaN/Inf.",
+      "limitations": "Not tested at 32K due to memory constraints on this hardware. Stability depends on A_bar being in (0,1) \u2014 unstable A would cause divergence."
+    },
+    {
+      "id": "SPARSE-1",
+      "claim": "Depth routing genuinely skips computation (gather-scatter, not compute-then-mask)",
+      "status": "PROVEN",
+      "implementation": "model.py forward: at inference, if n_active < B*T, calls block.forward_with_depth() which gathers active tokens, runs block on subset, scatters back.",
+      "test": "Phase 5.1: half_active mask reduces FLOPs by 27.8%, none_active by 55.5%. tests/test_phase4_v04.py::test_depth_gather_scatter_at_inference.",
+      "evidence": "OpCounter measured: all_active=8.5M FLOPs, half_active=6.1M FLOPs (27.8% reduction), none_active=3.8M FLOPs (55.5% reduction).",
+      "limitations": "At TRAINING, still uses STE mask blend (compute-then-mask) for differentiability. Genuine sparsity only at inference. The 27.8% reduction (vs theoretical 33%) is because embeddings/MoE/lm_head are always-on."
+    },
+    {
+      "id": "SPARSE-2",
+      "claim": "Width routing genuinely changes matmul dimensions",
+      "status": "PROVEN",
+      "implementation": "SlicedFFN in sliced_ffn.py: fc1 maps H->W, fc2 maps W->H, where W is the selected width. Only the selected W executes.",
+      "test": "Phase 5.2: SlicedFFN width=16:32:64 gives FLOPs 32768:65536:131072 = 0.25:0.50:1.00. tests/test_phase4_v04.py::test_adaptive_ffn_sliced_width (in test_phase2_sparsity.py).",
+      "evidence": "Linear hook shapes confirm fc1 output dim = selected width. Analytical FLOPs scale linearly with width.",
+      "limitations": "SlicedFFN is NOT wired into HASSBlock \u2014 HASSBlock still uses AdaptiveFFN which computes base + all adapters and blends. Phase 15 recommendation: replace AdaptiveFFN with SlicedFFN."
+    },
+    {
+      "id": "SPARSE-3",
+      "claim": "Pathway routing genuinely skips unselected pathways (top-k sparse dispatch)",
+      "status": "PROVEN",
+      "implementation": "sparse_pathway_dispatch in sparse_dispatch.py: for each pathway, finds tokens that selected it, only calls forward on those tokens. Pathways with no selected tokens are NOT called.",
+      "test": "Phase 5.3: K=1 -> only 1 pathway called, K=2 -> 2 pathways, K=3 -> all 3. Adversarial: all tokens to SSM -> only SSM called. tests/test_phase4_v04.py::test_pathway_top_k_1_skips_unselected.",
+      "evidence": "Pathway call counter: K=1 with all tokens to SSM -> {local:0, low_rank:0, ssm:1}. Confirmed 0 calls to unselected pathways.",
+      "limitations": "STE is used at training for differentiability. The forward uses hard top-k mask, backward sees soft probs."
+    },
+    {
+      "id": "SPARSE-4",
+      "claim": "MoE top-k genuinely executes only K experts per token",
+      "status": "PROVEN",
+      "implementation": "ShardedExpertFabric.forward: loops over top_k slots, groups tokens by expert id within each slot. Experts that no token selects are NOT loaded/called.",
+      "test": "Phase 5.4: K=1 -> 1 expert called, others get zero gradient. K=2 -> 2 experts, K=3 -> 3 experts. tests/test_phase4_v04.py::test_moe_unselected_experts_not_called (in test_phase2_sparsity.py).",
+      "evidence": "Expert call counts and gradient norms verify: called experts have non-zero grad, uncalled experts have exactly zero grad.",
+      "limitations": "Capacity constraint can force some tokens to lower-priority experts (capacity_factor=1.25 default)."
+    },
+    {
+      "id": "SPARSE-5",
+      "claim": "Genuine sparse execution achieves measurable FLOPs reduction vs dense",
+      "status": "EMPIRICALLY VERIFIED",
+      "implementation": "Combined effect of SPARSE-1/2/3/4.",
+      "test": "Phase 13: Baseline D (genuine sparse) vs Baseline A (dense).",
+      "evidence": "D uses 358M FLOPs/forward vs A 603M (40.6% reduction). D trains successfully (loss 3.47 -> 0.85).",
+      "limitations": "At tiny scale (H=32), D is SLOWER than A in wall-clock (14.3ms vs 13.9ms) due to Python dispatch overhead. On GPU at large scale, sparse would win."
+    },
+    {
+      "id": "ROUTER-1",
+      "claim": "Path diversity loss prevents pathway collapse",
+      "status": "PARTIALLY IMPLEMENTED",
+      "implementation": "path_diversity_loss = -entropy(path_probs) in routing.py. Default weight 0.1 (raised from 0.02 in Phase 6).",
+      "test": "Phase 6: tested 4 regimes (no/weak/current/strong balancing).",
+      "evidence": "no_balancing: collapse to 1 pathway. weak (0.002): collapse. current (0.02): collapse. strong (0.2): partial diversity (2/3 pathways). After bumping default to 0.1, comparative test confirms strong div >= no div.",
+      "limitations": "Even at 0.2, only 2/3 pathways active (not full diversity). The loss is necessary but not sufficient. Width router also collapses (always picks largest) \u2014 no width diversity loss exists."
+    },
+    {
+      "id": "ROUTER-2",
+      "claim": "Expert load balancing prevents expert collapse",
+      "status": "EMPIRICALLY VERIFIED",
+      "implementation": "Switch Transformer formula: L_lb = E * sum(f_e * p_e) in routing.py + L2 loss in model.py. (Phase 15 noted these double-count.)",
+      "test": "Phase 6: all 4 regimes had 0 dead experts, gini <= 0.057.",
+      "evidence": "Expert utilization is healthy across all regimes. 4/4 experts called with roughly uniform distribution.",
+      "limitations": "Two load-balance losses double-count. Phase 15 recommends unifying."
+    },
+    {
+      "id": "ROUTER-3",
+      "claim": "Depth routing does not collapse",
+      "status": "EMPIRICALLY VERIFIED",
+      "implementation": "depth_router with min_depth=1 enforcement in _route_depth.",
+      "test": "Phase 4: avg_depth=3.00/3 after 200 training steps. Phase 6: all regimes avg_depth ~3.0.",
+      "evidence": "No depth collapse observed in any experiment.",
+      "limitations": "min_depth=1 forces layer 0 active, which prevents full depth collapse but also prevents maximum sparsity."
+    },
+    {
+      "id": "BUDGET-1",
+      "claim": "ComputeController allocates compute based on global budget",
+      "status": "PARTIALLY IMPLEMENTED",
+      "implementation": "compute_controller.py takes compute_budget in [0,1] and modulates depth/width/pathway/expert routing.",
+      "test": "Phase 7: measured at budgets [0.10, 0.25, 0.50, 0.75, 1.00].",
+      "evidence": "FLOPs monotonically increase with budget: 0.10->1.7M, 1.00->6.9M. avg_depth scales: 0.12 -> 2.34.",
+      "limitations": "1) ComputeController is NOT wired into zeroModel \u2014 model uses AdaptiveRouter directly. Phase 7 tested it as a drop-in replacement. 2) Width bias had wrong sign (FIXED in Phase 7). 3) Cost model treats all ops as equal \u2014 embeddings/lm_head are always-on regardless of budget."
+    },
+    {
+      "id": "BUDGET-2",
+      "claim": "Compute budget controls actual compute (not just metadata)",
+      "status": "EMPIRICALLY VERIFIED",
+      "implementation": "ComputeController.actual_compute field + OpCounter measurement.",
+      "test": "Phase 7: predicted_compute and actual_flops both monotonically increase with budget.",
+      "evidence": "Predicted and actual correlate. 4x FLOPs range across budgets.",
+      "limitations": "FLOPs ratio (0.244) does not match budget ratio (0.10) because always-on components dominate at low budgets."
+    },
+    {
+      "id": "MOE-1",
+      "claim": "Disk-sharded MoE survives save -> restart -> reload",
+      "status": "PROVEN",
+      "implementation": "ExpertDiskManager saves/loads expert state_dicts to .pt files. Manifest tracks which experts exist (int keys converted to strings for JSON).",
+      "test": "Phase 10 steps 1-7: create, save, destroy, reload, verify metadata, verify weights. tests/test_phase4_v04.py::test_moe_restart_preserves_weights.",
+      "evidence": "4/4 experts weights match exactly after restart. Manifest loads correctly.",
+      "limitations": "The int-key/string-key JSON bug was fixed in v0.3. expert_exists() correctly checks str(eid) in manifest."
+    },
+    {
+      "id": "MOE-2",
+      "claim": "LRU cache evicts least-recently-used experts",
+      "status": "PROVEN",
+      "implementation": "LRUExpertCache uses OrderedDict, moves to end on access, evicts from front.",
+      "test": "Phase 10 step 10: loaded 4 experts with capacity 3, expert 0 evicted.",
+      "evidence": "After loading 0,1,2,3 with cap=3: cache=[1,2,3], 1 eviction. Correct LRU order.",
+      "limitations": "Cache is a plain Python class (not nn.Module) \u2014 Phase 10 found and fixed that .eval() did not propagate. Now overridden in ShardedExpertFabric.train()."
+    },
+    {
+      "id": "MOE-3",
+      "claim": "Train/eval mode propagates to cached experts",
+      "status": "PROVEN",
+      "implementation": "ShardedExpertFabric.train(mode) override propagates to all cached experts + dummy expert.",
+      "test": "Phase 10 step 13. tests/test_phase4_v04.py::test_moe_eval_mode_propagates_to_cached_experts.",
+      "evidence": "After fix: train() sets all cached experts to training mode, eval() sets all to eval mode.",
+      "limitations": "This was a BUG in v0.3 (LRUExpertCache not nn.Module). Fixed in Phase 10."
+    },
+    {
+      "id": "TRAIN-1",
+      "claim": "Architecture can train (loss decreases, gradients finite)",
+      "status": "PROVEN",
+      "implementation": "Full differentiable forward pass with STE for routing decisions.",
+      "test": "Phase 4: 200 steps, loss 3.47 -> 0.006. tests/test_phase4_v04.py::test_tiny_training_loss_decreases.",
+      "evidence": "99.8% loss reduction, 98.3% accuracy, all outputs finite, gradients reach all expected subsystems.",
+      "limitations": "CoT is frozen by design (pre-training). Pathway collapse means local + low_rank pathways get zero gradient."
+    },
+    {
+      "id": "DEAD-1",
+      "claim": "ComputeController is part of the model architecture",
+      "status": "FALSE",
+      "implementation": "compute_controller.py exists but is NOT imported by zeroModel. The model uses AdaptiveRouter.",
+      "test": "Phase 7 needed to patch the router to test ComputeController.",
+      "evidence": "grep shows no import of ComputeController in zero/model.py or zmoe.py.",
+      "limitations": "Should either wire it in (replacing AdaptiveRouter) or remove it. Phase 15 recommendation."
+    },
+    {
+      "id": "DEAD-2",
+      "claim": "Adaptive halting is part of the model architecture",
+      "status": "FALSE",
+      "implementation": "adaptive_halting.py exists but is NOT imported by zeroModel.",
+      "test": "grep shows no usage.",
+      "evidence": "Dead code.",
+      "limitations": "Remove or wire in."
+    },
+    {
+      "id": "DEAD-3",
+      "claim": "SlicedFFN provides model-level width sparsity",
+      "status": "PARTIALLY IMPLEMENTED",
+      "implementation": "sliced_ffn.py exists and is tested, but HASSBlock uses AdaptiveFFN (compute-then-blend) instead.",
+      "test": "Phase 5.2 tested SlicedFFN standalone. Phase 15 noted it is not used by HASSBlock.",
+      "evidence": "SlicedFFN works correctly in isolation but is not wired into the model.",
+      "limitations": "Phase 15 recommendation: replace AdaptiveFFN with SlicedFFN in HASSBlock."
+    },
+    {
+      "id": "DEAD-4",
+      "claim": "CoT (Chain-of-Thought) contributes to model training",
+      "status": "FALSE (by design)",
+      "implementation": "InternalLatentCoT is frozen (requires_grad=False) for pre-training. cot_vector_seq is zeros.",
+      "test": "Phase 4: CoT parameters have zero gradient (frozen).",
+      "evidence": "46 leaf params have zero grad, all in low_rank pathway (due to pathway collapse) \u2014 CoT is intentionally frozen.",
+      "limitations": "This is BY DESIGN \u2014 CoT is for fine-tuning phase. model.enable_cot() unfreezes it. Document this clearly."
+    }
+  ]
+}
