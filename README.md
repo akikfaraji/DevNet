@@ -13,6 +13,21 @@ v0.2.4 rigorous benchmark:
 
 See `tests/test_fixes.py` for regression coverage of all three fixes.
 
+## Reports & audits
+
+All verification, audit, and benchmark reports live under [`reports/`](reports/). Key files:
+
+| File | Description |
+|---|---|
+| [`reports/xorzen_v0.2.4_fix_report.md`](reports/xorzen_v0.2.4_fix_report.md)         | End-to-end bug-fix report (root cause, fix, tests, benchmark before/after). |
+| [`reports/xorzen_verified_proofs.md`](reports/xorzen_verified_proofs.md)              | 14 architectural properties P1–P14 with theorem statements and proofs. 26-check suite, all PASS. |
+| [`reports/xorzen_v0.2.4_benchmark_report.pdf`](reports/xorzen_v0.2.4_benchmark_report.pdf) | Generated PDF benchmark report. |
+| [`reports/audit/p1_p14.md`](reports/audit/p1_p14.md)                                  | **Adversarial** re-audit of P1–P14. Re-derives each claim independently from the implementation. Classifications: 1 PROVEN, 1 EMPIRICALLY VERIFIED ONLY, 5 INCORRECT, 1 PARTIALLY PROVEN, 6 UNTESTED. |
+| [`reports/audit/flops.json`](reports/audit/flops.json)                                | Independent FLOPs/throughput audit per `zero` variant. |
+| [`reports/audit/param_counts.json`](reports/audit/param_counts.json)                  | Independent parameter-count audit per `zero` variant. |
+
+The scripts that produced these reports live under [`scripts/`](scripts/) and [`scripts/audit/`](scripts/audit/). See [`scripts/README.md`](scripts/README.md) for the full execution order.
+
 ## Installation
 
 ```bash

@@ -1,0 +1,184 @@
+[
+  {
+    "property": "P1.zero_1.3b active%",
+    "status": "PASS",
+    "observed": "6.7225%",
+    "expected": "0% < active% \u2264 100%",
+    "notes": "active=20,138,415 total=299,567,744 target_ratio=0.07"
+  },
+  {
+    "property": "P1.zero_10m active%",
+    "status": "PASS",
+    "observed": "15.6923%",
+    "expected": "0% < active% \u2264 100%",
+    "notes": "active=733,948 total=4,677,120 target_ratio=0.1"
+  },
+  {
+    "property": "P1.zero_1m active%",
+    "status": "PASS",
+    "observed": "7.5213%",
+    "expected": "0% < active% \u2264 100%",
+    "notes": "active=44,329 total=589,376 target_ratio=0.1"
+  },
+  {
+    "property": "P1.zero_277m active%",
+    "status": "PASS",
+    "observed": "10.6064%",
+    "expected": "0% < active% \u2264 100%",
+    "notes": "active=6,236,659 total=58,801,152 target_ratio=0.1"
+  },
+  {
+    "property": "P1.zero_500m active%",
+    "status": "PASS",
+    "observed": "7.6754%",
+    "expected": "0% < active% \u2264 100%",
+    "notes": "active=9,613,216 total=125,247,360 target_ratio=0.08"
+  },
+  {
+    "property": "P1.zero_50m active%",
+    "status": "PASS",
+    "observed": "13.5693%",
+    "expected": "0% < active% \u2264 100%",
+    "notes": "active=1,451,468 total=10,696,704 target_ratio=0.1"
+  },
+  {
+    "property": "P1.zero_7b active%",
+    "status": "PASS",
+    "observed": "4.4695%",
+    "expected": "0% < active% \u2264 100%",
+    "notes": "active=91,225,523 total=2,041,089,792 target_ratio=0.05"
+  },
+  {
+    "property": "P1.zero_tiny_23k active%",
+    "status": "PASS",
+    "observed": "60.8036%",
+    "expected": "0% < active% \u2264 100%",
+    "notes": "active=681 total=1,120 target_ratio=0.1"
+  },
+  {
+    "property": "P2 SSM scaling T=128\u21921024",
+    "status": "PASS",
+    "observed": "6.60\u00d7",
+    "expected": "< 12\u00d7 (linear, not quadratic)",
+    "notes": "t(128)=1.63ms t(1024)=10.75ms"
+  },
+  {
+    "property": "P3 SSM BIBO bound",
+    "status": "PASS",
+    "observed": "||h_T||_\u221e = 0.275459",
+    "expected": "\u2264 1.042392 (= ||Bv||_\u221e / (1-||Ab||_\u221e))",
+    "notes": "max|Ab|=0.6065 max|Bv|=0.4101"
+  },
+  {
+    "property": "P4 MoE forward (no rd attr)",
+    "status": "PASS",
+    "observed": "logits=(4, 32, 10000)",
+    "expected": "(4,32,10000)",
+    "notes": ""
+  },
+  {
+    "property": "P5 load_balance loss",
+    "status": "FAIL",
+    "observed": "L(uniform)=1.000000 L(concentrated)=8.000000",
+    "expected": "L \u2265 0; L(uniform) \u2248 0 < L(concentrated)",
+    "notes": ""
+  },
+  {
+    "property": "P6 MSE bound bits=4",
+    "status": "PASS",
+    "observed": "MSE=6.937892e-03",
+    "expected": "\u2264 1.869139e-02 (\u0394\u00b2/4)",
+    "notes": ""
+  },
+  {
+    "property": "P6 MSE bound bits=8",
+    "status": "PASS",
+    "observed": "MSE=2.177746e-05",
+    "expected": "\u2264 6.443169e-05 (\u0394\u00b2/4)",
+    "notes": ""
+  },
+  {
+    "property": "P6 MSE bound bits=16",
+    "status": "PASS",
+    "observed": "MSE=2.818498e-10",
+    "expected": "\u2264 8.142001e-10 (\u0394\u00b2/4)",
+    "notes": ""
+  },
+  {
+    "property": "P7 compression bits=8",
+    "status": "PASS",
+    "observed": "C=4.0000\u00d7",
+    "expected": "= 4.0000\u00d7 (32/8)",
+    "notes": ""
+  },
+  {
+    "property": "P7 compression bits=4",
+    "status": "PASS",
+    "observed": "C=8.0000\u00d7",
+    "expected": "= 8.0000\u00d7 (32/4)",
+    "notes": ""
+  },
+  {
+    "property": "P8 state_dict round-trip",
+    "status": "PASS",
+    "observed": "max|\u0394logits| = 0.00e+00",
+    "expected": "= 0 (exact)",
+    "notes": ""
+  },
+  {
+    "property": "P9 path simplex",
+    "status": "PASS",
+    "observed": "sum\u2208[1.000000,1.000000] min(p)=0.290543",
+    "expected": "sum=1, all \u2265 0",
+    "notes": ""
+  },
+  {
+    "property": "P10 width \u2191 with complexity",
+    "status": "PASS",
+    "observed": "E[w|low_c]=0.9088  E[w|high_c]=0.9415",
+    "expected": "E[w|high_c] \u2265 E[w|low_c]",
+    "notes": ""
+  },
+  {
+    "property": "P11 causal mask",
+    "status": "PASS",
+    "observed": "28/28 upper-triangular entries = -inf",
+    "expected": "all upper-tri = -inf",
+    "notes": ""
+  },
+  {
+    "property": "P12 tokenizer round-trip",
+    "status": "PASS",
+    "observed": "vocab=65000 enc_len=20 rt_ok=True",
+    "expected": "decode(encode(x)).startswith(x)",
+    "notes": ""
+  },
+  {
+    "property": "P13.zero_10m sharding",
+    "status": "PASS",
+    "observed": "RAM=1.12MB / disk=4.50MB (saving 75.0%)",
+    "expected": "RAM < disk, 0 < saving < 1 (E=8, k=2)",
+    "notes": ""
+  },
+  {
+    "property": "P13.zero_50m sharding",
+    "status": "PASS",
+    "observed": "RAM=2.00MB / disk=43.00MB (saving 95.3%)",
+    "expected": "RAM < disk, 0 < saving < 1 (E=43, k=2)",
+    "notes": ""
+  },
+  {
+    "property": "P13.zero_277m sharding",
+    "status": "PASS",
+    "observed": "RAM=8.00MB / disk=256.00MB (saving 96.9%)",
+    "expected": "RAM < disk, 0 < saving < 1 (E=64, k=2)",
+    "notes": ""
+  },
+  {
+    "property": "P14 active% non-increasing with scale",
+    "status": "PASS",
+    "observed": "15.69% \u2192 13.57% \u2192 10.61% \u2192 7.68% \u2192 6.72% \u2192 4.47%",
+    "expected": "non-increasing sequence (\u00b10.5% tolerance)",
+    "notes": ""
+  }
+]

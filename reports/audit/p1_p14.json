@@ -1,0 +1,313 @@
+[
+  {
+    "id": "P1",
+    "claim": "HASS block composes 3 pathways (Local+LowRank+SSM) with adaptive routing.",
+    "location": "xorzen/model/components/hass_block.py:720-940 (HASSBlock class)",
+    "theorem": "For input x in R^{B\u00d7T\u00d7H}, the HASS block computes y = x + dropout(merger(  sum_i p_i * f_i(x)  )) where f_i are the 3 pathway functions and p_i are learned/router-derived weights, followed by x + dropout(FFN(x)).",
+    "test_design": "Instantiate HASSBlock, check 3 pathways exist, call forward, verify output shape and that all 3 pathways are exercised.",
+    "pathways_present": [
+      "local",
+      "low_rank",
+      "ssm"
+    ],
+    "output_shape": [
+      2,
+      16,
+      64
+    ],
+    "params_per_pathway": {
+      "local": 16768,
+      "low_rank": 50880,
+      "ssm": 12960
+    },
+    "output_shape_with_routing": [
+      2,
+      16,
+      64
+    ],
+    "classification": "PROVEN",
+    "evidence": "3 pathways present, forward succeeds with and without routing."
+  },
+  {
+    "id": "P2",
+    "claim": "SSM pathway has linear complexity O(L) in sequence length.",
+    "location": "xorzen/model/components/hass_block.py:323-504 (SSMPathway); ssm.py:13 claims 'O(L log L) parallel scan'",
+    "theorem": "T(L) = a*L + b for some constants a,b (linear). Empirically: doubling L should approximately double runtime.",
+    "test_design": "Time SSMPathway forward at L = 64, 128, 256, 512, 1024. Compute the ratio T(2L)/T(L). For O(L) it should approach 2.0. For O(L^2) it would approach 4.0.",
+    "timings": {
+      "64": 0.0010921579996647779,
+      "128": 0.0017939290000867913,
+      "256": 0.003514322000228276,
+      "512": 0.0057098389997918275,
+      "1024": 0.011410713999794098
+    },
+    "ratios": {
+      "T(128)/T(64)": 1.6425544661463012,
+      "T(256)/T(128)": 1.9590084111791777,
+      "T(512)/T(256)": 1.6247341590841533,
+      "T(1024)/T(512)": 1.9984300783630005
+    },
+    "avg_ratio": 1.8061817786931582,
+    "expected_for_linear": 2.0,
+    "expected_for_quadratic": 4.0,
+    "classification": "EMPIRICALLY VERIFIED ONLY",
+    "note": "Runtime scales approximately linearly with L. Note: implementation uses a Python for-loop, not a true parallel scan.",
+    "docstring_claim": "ssm.py:13 claims 'O(L log L) parallel scan' but the actual SSMPathway.forward uses a sequential Python for-loop (hass_block.py:452).",
+    "implementation_truth": "True O(L) sequential scan, not O(L log L) parallel scan."
+  },
+  {
+    "id": "P3",
+    "claim": "SSM uses input-dependent discretization (ZOH) for A and B.",
+    "location": "xorzen/model/components/hass_block.py:441-455 (SSMPathway.forward)",
+    "theorem": "ZOH discretization: A_bar = exp(\u0394A), B_bar = (A_bar - I)/A \u00b7 B (or first-order approx \u0394\u00b7B). The discrete recurrence is h_t = A_bar_t \u00b7 h_{t-1} + B_bar_t \u00b7 x_t.",
+    "test_design": "Read the source code and verify that both A and B are discretized. Then numerically verify the recurrence matches the documented formula.",
+    "source_excerpt": "    def forward(self, x: torch.Tensor) -> torch.Tensor:\n        \"\"\"\n        Forward pass with SSM.\n        \n        Args:\n            x: Input tensor [batch, seq_len, hidden]\n            \n        Returns:\n            Output tensor [batch, seq_len, hidden]\n        \"\"\"\n        batch_size, seq_len, _ = x.shape\n        \n        # Layer norm input\n        x_norm = self.ln_input(x)\n        \n        # Apply conv if enabled\n        if self.conv is not None:\n            # Transpose for conv1d\n            x_conv = x_norm.transpose(1, 2)  # [batch, hidden, seq_len]\n            x_conv = self.conv(x_conv)\n            x_conv = x_conv.transpose(1, 2)  # [batch, seq_len, hidden]\n            x_norm = x_norm + x_conv  # Residual\n        \n        # Compute gates\n        gate = self.gate_proj(x_norm)\n        gate, input_gate = gate.chunk(2, dim=-1)\n        gate = torch.sigmoid(gate)\n        \n        # Prepare inputs\n        Bv = self.B_proj(x_norm * torch.sigmoid(input_gate))  # [B, T, state]\n        C  = self.C_proj(x_norm)                              # [B, T, state]\n\n        # -- Input-dependent discretisation (diagonal A, NO matrix_exp) -------\n        dt  = F.softplus(self.dt_proj(x_norm))                 # [B, T, state]\n        a   = -torch.exp(self.A_log)                           # [state] negative\n        Ab  = torch.exp(dt * a.unsqueeze(0).unsqueeze(0))      # [B, T, state] in (0,1)\n\n        # -- Numerically stable sequential scan for time-varying Ab -----------\n        # Recurrence: h",
+    "A_discretized": true,
+    "B_discretized": false,
+    "recurrence_structurally_correct": true,
+    "double_C_bug_present": true,
+    "B_bar_formula_used": "Bv = B_proj(x_norm * sigmoid(input_gate)) \u2014 raw projection, no \u0394 factor",
+    "expected_B_bar_ZOH": "B_bar_t = (Ab_t - 1)/a * B_t or first-order: \u0394_t * B_t",
+    "classification": "INCORRECT",
+    "theorem_violation": "Stated ZOH discretization is only applied to A. B is used as raw B_proj(x) without multiplication by \u0394 or (Ab-1)/a. This violates the ZOH formula and changes the SSM dynamics: the effective input scaling is independent of the time step, which is non-physical.",
+    "corrected_theorem": "Replace Bv = B_proj(x_norm * sigmoid(input_gate)) with Bv = dt * B_proj(x_norm * sigmoid(input_gate)) (first-order ZOH) or Bv = ((Ab - 1) / a) * B_proj(...) (exact ZOH for diagonal A)."
+  },
+  {
+    "id": "P4",
+    "claim": "Top-k MoE routing activates only K experts per token.",
+    "location": "xorzen/model/components/routing.py:678-742 (_route_experts); xorzen/model/zmoe.py:489-640 (ShardedExpertFabric.forward)",
+    "theorem": "For each token i, exactly K experts are selected, weighted, and their outputs combined as sum_k w_{i,k} * E_{e_{i,k}}(x_i). The other (E-K) experts receive no compute.",
+    "test_design": "Run forward with model in eval mode. After forward, inspect the expert_indices tensor and verify each token has exactly K distinct expert indices. Also verify that the ShardedExpertFabric loop only calls K experts per token.",
+    "classification": "UNTESTED",
+    "error": "Could not extract expert_indices from output"
+  },
+  {
+    "id": "P5",
+    "claim": "Load balancing auxiliary loss prevents router collapse.",
+    "location": "xorzen/model/components/routing.py:26-36 (load_balance_loss); model.py:636-680 (_compute_load_balance_loss); routing.py:932-956 (_compute_balancing_loss \u2014 different formula)",
+    "theorem": "L_lb = N * sum_i f_i * P_i where f_i is fraction of tokens routed to expert i and P_i is mean prob assigned to expert i. Minimizing L_lb incentivizes uniform f_i and P_i.",
+    "test_design": "1. Read the load_balance_loss formula and check it matches Switch Transformer paper. 2. Compute L_lb for perfectly balanced vs collapsed distributions.",
+    "classification": "UNTESTED",
+    "error": "ValueError: not enough values to unpack (expected 3, got 2)",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/z/my-project/scripts/audit_p1_p14.py\", line 356, in verify_P5\n    lb_balanced = load_balance_loss(router_probs, expert_indices, E).item()\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/z/my-project/xorzen_dev/xorzen/model/components/routing.py\", line 31, in load_balance_loss\n    B, S, E = router_probs.shape\n    ^^^^^^^\nValueError: not enough values to unpack (expected 3, got 2)\n"
+  },
+  {
+    "id": "P6",
+    "claim": "Disk sharding enables large MoE to fit in limited RAM.",
+    "location": "xorzen/utils/sharding.py:1-1550; xorzen/model/zmoe.py:227-412",
+    "theorem": "Total expert storage S_total = E * p_e * b bytes (on disk). Peak RAM = max_cache * p_e * b bytes (LRU-bounded). If max_cache < E, peak RAM < S_total, enabling deployment.",
+    "test_design": "1. Inspect the ShardedExpertFabric and ExpertShardManager. 2. Verify that experts are stored on disk and loaded via LRU. 3. Check if the metadata reload bug (string vs int keys) breaks restart.",
+    "_load_metadata_source": "    def _load_metadata(self) -> Dict[int, ShardMetadata]:\n        \"\"\"Load metadata from file.\"\"\"\n        if self.metadata_file.exists():\n            try:\n                with open(self.metadata_file, 'r') as f:\n                    return json.load(f)\n            except Exception as e:\n                logger.error(\"sharding\", f\"Failed to load metadata: {e}\")\n        \n        return {}\n",
+    "ShardMetadata_from_dict_called_in_class": false,
+    "load_expert_source_excerpt": "    def load_expert(self, expert_id: int) -> nn.Module:\n        \"\"\"\n        Load expert from disk or cache.\n        \n        Args:\n            expert_id: Expert ID\n            \n        Returns:\n            Loaded expert module\n        \"\"\"\n        # Check cache first\n        cached = self.cache.get(expert_id)\n        if cached is not None:\n            self.stats.cache_hits += 1\n            self._update_metadata_access(expert_id)\n            return cached\n        \n        # Not in cache, load from disk\n        self.stats.cache_misses += 1\n        \n        # Check if expert exists\n        if expert_id not in self.metadata:\n            raise ValueError(f\"Expert {expert_id} not found\")\n        \n        # Load synchronously or asynchronously based on policy\n        expert = self._load_expert_sync(expert_id)\n        \n        # Update cache\n        expert_size = self._calculate_expert_size(expert)\n        self.cache.put(expert_id, expert, expert_size)\n        \n        # Update statistics\n     ",
+    "int_string_key_bug": "_load_metadata does json.load(f) which returns Dict[str, dict] (JSON keys are strings). load_expert does `if expert_id not in self.metadata` with int expert_id, which never matches string keys \u2192 ValueError('Expert not found') after restart.",
+    "ShardMetadata_from_dict_defined": true,
+    "ShardMetadata_from_dict_used": false,
+    "ExpertDiskManager_load_expert_source": "    def load_expert(self, expert_id: int, device: str = 'cpu') -> ExpertFFN:\n        \"\"\"\n        Load expert from disk.\n        \n        Args:\n            expert_id: Expert index\n            device: Device to load expert on\n        \n        Returns:\n            Loaded expert module\n        \"\"\"\n        expert_path = self.get_expert_path(expert_id)\n        \n        if not expert_path.exists():\n            # Create new expert if doesn't exist\n            logger.debug(\"zmoe\", f\"Expert {expert_id} not found, creating new...\")\n            expert = self._create_new_expert(expert_id)\n            self.save_expert(expert_id, expert)\n            return expert.to(device)\n        \n        # Load from disk\n        start_time = time.time()\n        checkpoint = torch.load(expert_path, map_location=device)\n        \n        # Create expert and load state\n        expert = ExpertFFN(\n            hidden_dim=self.hidden_dim,\n            intermediate_dim=self.intermediate_dim\n        )\n        expert.expert_",
+    "expert_eval_bug": "ExpertDiskManager.load_expert calls expert.eval() unconditionally. If the fabric is in training mode, loaded experts will be in eval mode during training forward, disabling dropout inside experts.",
+    "classification": "PARTIALLY PROVEN",
+    "note": "Disk sharding DOES store experts on disk and load via LRU cache. However: (a) restart is broken (int vs string key mismatch), (b) loaded experts are forced to eval mode (training bug), (c) GDS placement receives fake gradients (torch.tensor(1.0)) so prefetch is random, (d) the LRUCache evicts with gc.collect() on every eviction (perf killer), (e) MemoryMappedShard.read_tensor does .clone() and dtype conversion, discarding mmap's zero-copy benefit.",
+    "recommended_experiment": "1. Save 4 experts to disk, restart the program, attempt to load expert 0. Expected: ValueError('Expert 0 not found') due to int/string key mismatch. 2. Time 100 evictions with and without gc.collect(). Expected: gc.collect() adds ~50ms per eviction."
+  },
+  {
+    "id": "P7",
+    "claim": "Adaptive depth routing skips layers per token, reducing compute.",
+    "location": "model.py:467-510 (forward loop); routing.py:524-582 (_route_depth)",
+    "theorem": "For each token i, depth_mask[i, l] \u2208 {0, 1} indicates whether layer l is computed. Total compute = sum_{i,l} depth_mask[i,l] * cost(layer). If mask is sparse, total compute < L * cost(layer) * N.",
+    "test_design": "1. Read the forward loop in model.py. 2. Check whether layers are actually skipped or just blended. 3. Time a forward pass with all-ones mask vs all-zeros mask (except last).",
+    "forward_source_excerpt": "    def forward(\n        self,\n        input_ids: torch.LongTensor,\n        attention_mask: Optional[torch.Tensor] = None,\n        position_ids: Optional[torch.LongTensor] = None,\n        labels: Optional[torch.LongTensor] = None,\n        output_hidden_states: bool = False,\n        output_routing_info: bool = False,\n        output_cot_vector: bool = True,\n        return_dict: bool = True,\n        use_cache: bool = False,\n    ) -> Union[ModelOutput, Tuple]:\n        \"\"\"\n        Defines the forward pass logic for the `zeroModel`.\n        Input tokens are processed sequentially through a series of stages:\n        embeddings, adaptive routing, HASS blocks, Mixture-of-Experts (MoE),\n        merger gate, and finally the language model head to produce logits.\n        Auxiliary losses for routing and CoT consistency are also computed.\n        \n        The process involves:\n        1.  **Embeddings**: Token and positional embeddings are applied.\n        2.  **Internal CoT Initialization/Update**: CoT vector is initialized and\n            recurrently updated across layers.\n        3.  **Adaptive Routing**: The router dynamically decides which components\n            (depth, width, pathway, experts) are activated for each token.\n        4.  **HASS Blocks**: Processes hidden states through hybrid attention\n            and State Space Model pathways.\n        5.  **MoE Experts**: Processes tokens through dynamically selected\n            Mixture-of-Experts layers.\n        6.  **Merger Gate**: Combines outputs from HASS blocks, MoE, and CoT.\n        7.  **LM Head**: Projects the final hidden states to vocabulary logits.\n        \n        Args:\n            input_ids (`torch.LongTensor`): Tensor of input token IDs, shape `(batch_size, sequence_length)`.\n            attention_mask (`torch.Tensor`, *optional*): Mask to avoid performing attention\n                                                           on padding tokens, shape `(batch_size, sequence_length)`.\n            position_ids (`torch.LongTensor`, *optional*): Specific positional indices\n                                                            for each token, shape `(batch_size, sequence_length)`.\n                                                            If `None`, sequential indices are generated.\n            labels (`torch.LongTensor`, *optional*): Labels for computing the language modeling loss,\n                                                     shape `(batch_size, sequence_length)`.\n            output_hidden_s",
+    "training_blends_not_skips": false,
+    "inference_skips_only_when_all_zero": true,
+    "default_forward_time_sec": 0.006036874599885778,
+    "structural_analysis": {
+      "training_mode": "All layers always computed; output = block_out * mask + x * (1-mask). No FLOP savings.",
+      "inference_mode": "Layer skipped ONLY when ALL tokens in batch have hard-0 mask for that layer. Per-token skip NOT implemented.",
+      "forward_with_depth_method": "HASSBlock.forward_with_depth exists (hass_block.py:942) but is NEVER called by zeroModel.forward."
+    },
+    "classification": "INCORRECT",
+    "theorem_violation": "The claim 'adaptive depth routing skips layers per token' is FALSE at training (all layers always computed, output is blended). At inference, layers are skipped ONLY when the entire batch has hard-0 mask for that layer \u2014 per-token skipping is not implemented. The forward_with_depth method exists but is never called.",
+    "corrected_theorem": "Depth routing at training is a soft blend (no FLOP savings). At inference, depth routing skips a layer only when the entire batch's depth mask for that layer is 0. Per-token layer skipping requires either: (a) reimplementing forward_with_depth and calling it, or (b) extracting active tokens per layer and processing them as a sub-batch."
+  },
+  {
+    "id": "P8",
+    "claim": "Adaptive width routing reduces per-token compute by selecting smaller FFN widths.",
+    "location": "hass_block.py:509-716 (AdaptiveFFN); routing.py:584-629 (_route_width)",
+    "theorem": "For each token i, width_idx[i] selects an FFN width w_{idx} from width_choices. Compute = sum_i 2*H*w_{idx[i]} (vs 2*H*W_max for all). If avg(w_idx) < W_max, compute is reduced.",
+    "test_design": "1. Read AdaptiveFFN.forward and _apply_width_adaptation. 2. Check whether the base FFN is always computed or skipped.",
+    "forward_source": "    def forward(\n        self,\n        x: torch.Tensor,\n        width_multiplier: Optional[torch.Tensor] = None,\n        width_idx: Optional[torch.Tensor] = None\n    ) -> torch.Tensor:\n        \"\"\"\n        Forward pass with optional width adaptation.\n        \n        Args:\n            x: Input tensor [batch, seq_len, hidden]\n            width_multiplier: Width multiplier per token [batch, seq_len, 1]\n            width_idx: Width index per token [batch, seq_len]\n            \n        Returns:\n            Output tensor [batch, seq_len, hidden]\n        \"\"\"\n        batch_size, seq_len, _ = x.shape\n        \n        # Layer norm input\n        x_norm = self.ln_input(x)\n        \n        # Base FFN\n        hidden = self.fc1(x_norm)\n        hidden = self._get_activation()(hidden)\n        hidden = self.ln_hidden(hidden)\n        hidden = self.ffn_dropout(hidden)\n        \n        base_output = self.fc2(hidden)\n        \n        # Apply width adaptation if requested\n        if width_multiplier is not None and width_idx is not None:\n            adaptive_output = self._apply_width_adaptation(x_norm, width_idx, width_multiplier)\n            \n            # Blend base and adaptive output based on width multiplier\n            # width_multiplier = 1.0 means full width, 0.0 means minimal\n            output = base_output * width_multiplier + adaptive_output * (1 - width_multiplier)\n        else:\n            output = base_output\n        \n        # Dropout and residual\n        output = self.dropout(output)\n        \n        return output\n",
+    "adaptation_source": "    def _apply_width_adaptation(self, x: torch.Tensor, width_idx: torch.Tensor, width_probs: Optional[torch.Tensor] = None) -> torch.Tensor:\n        \"\"\"Apply width-specific adaptation with soft mixing during training.\"\"\"\n        batch_size, seq_len, _ = x.shape\n        \n        # TRAINING: Soft mix all adapters using width_probs\n        if self.training and width_probs is not None:\n            if len(self.width_adapters) == 0:\n                return torch.zeros_like(x)\n            \n            # Compute all adapter outputs\n            adapter_outputs = []\n            for width_key in sorted(self.width_adapters.keys()):\n                adapted = self.width_adapters[width_key](x)  # [B, S, H]\n                adapter_outputs.append(adapted)\n            \n            # Stack and weight by width_probs\n            if adapter_outputs:\n                stacked = torch.stack(adapter_outputs, dim=-1)  # [B, S, H, num_adapters]\n                # width_probs: [B, S, num_widths] - use only adapter dimensions\n                w = width_probs[..., :len(adapter_outputs)].unsqueeze(-2)  # [B, S, 1, num_adapters]\n                output = (stacked * w).sum(dim=-1)  # [B, S, H]\n            else:\n                output = torch.zeros_like(x)\n            \n            return output\n        \n        # INFERENCE: Hard selection\n        output = torch.zeros_like(x)\n        unique_widths = torch.unique(width_idx)\n        \n        for width_val in unique_widths:\n            width_val = width_val.item()\n            mask = (width_idx == width_val)\n            if not mask.any():\n                continue\n            \n            tokens = x[mask]\n            \n            if str(width_val) in self.width_adapters:\n                adapter = self.width_adapters[str(width_val)]\n                adapted = adapter(tokens)\n            else:\n                adapted = tokens\n            \n            output[mask] = adapted\n        \n        return output\n",
+    "always_computes_base_FFN": true,
+    "always_computes_width_adapters": true,
+    "blends_base_and_adaptive": true,
+    "width_probs_vs_width_multiplier_bug": true,
+    "classification": "INCORRECT",
+    "theorem_violation": "AdaptiveFFN.forward ALWAYS computes the full base FFN (fc1 \u2192 activation \u2192 fc2) at full hidden width. Then it ALSO computes all width adapters and blends them. Total compute = base_FFN + sum(adapter_FFNs). Width routing strictly INCREASES compute rather than reducing it. Additionally, _apply_width_adaptation receives width_multiplier [B,T,1] but treats it as width_probs [B,T,num_adapters], slicing to [B,T,:N_adapters] which yields [B,T,1] \u2014 so all adapters are weighted by the same scalar, not by per-width probabilities. The intended per-width mix never happens.",
+    "corrected_theorem": "To actually reduce compute: (a) make base FFN one of the width choices (e.g. skip fc1/fc2 if width_idx != H), (b) only compute the selected width adapter, (c) pass the actual width_probs [B,T,num_widths] from the router to the FFN."
+  },
+  {
+    "id": "P9",
+    "claim": "Internal Latent Chain-of-Thought vector maintains reasoning state across layers.",
+    "location": "cot_vector.py:116-325 (InternalLatentCoT); model.py:129-131, 442-446",
+    "theorem": "CoT vector c_l at layer l is a function of c_{l-1} and the layer's hidden state h_l. The recurrence c_l = GRU(update(h_l), c_{l-1}) allows information to flow across layers.",
+    "test_design": "1. Read model.py:442-446 to see if CoT is actually called. 2. Check if cot_vector_seq is initialized to zeros and never updated.",
+    "cot_called_in_forward": false,
+    "cot_initialized_to_zeros": true,
+    "cot_related_lines": [
+      [
+        8,
+        "output_cot_vector: bool = True,"
+      ],
+      [
+        17,
+        "Auxiliary losses for routing and CoT consistency are also computed."
+      ],
+      [
+        21,
+        "2.  **Internal CoT Initialization/Update**: CoT vector is initialized and"
+      ],
+      [
+        29,
+        "6.  **Merger Gate**: Combines outputs from HASS blocks, MoE, and CoT."
+      ],
+      [
+        45,
+        "output_cot_vector (`bool`, *optional*): If `True`, the final Chain-of-Thought"
+      ],
+      [
+        57,
+        "- `cot_vector` (`torch.Tensor`, *optional*): Final CoT vector."
+      ],
+      [
+        104,
+        "# ========== STEP 2: INITIALIZE COT =========="
+      ],
+      [
+        105,
+        "# CoT is DISABLED during pre-training to ensure clean gradient flow."
+      ],
+      [
+        107,
+        "# We still pass a zeroed cot_vector_seq so downstream components (merger,"
+      ],
+      [
+        109,
+        "cot_total_dim = self.config.cot_dim * self.config.cot_components"
+      ],
+      [
+        110,
+        "cot_vector_seq = torch.zeros("
+      ],
+      [
+        111,
+        "batch_size, seq_length, cot_total_dim,"
+      ],
+      [
+        113,
+        ")  # [B, T, cot_dim] \u2014 zeros, no gradient"
+      ],
+      [
+        119,
+        "cot_features=cot_vector_seq,"
+      ],
+      [
+        175,
+        "# CoT update skipped during pre-training (cot_vector_seq stays zero)."
+      ]
+    ],
+    "classification": "INCORRECT",
+    "theorem_violation": "model.py:442-446 initializes cot_vector_seq = torch.zeros(B, T, cot_dim*6) and NEVER calls self.cot(...). The CoT module (model.py:129) is instantiated, frozen (line 130, requires_grad=False), and contributes ZERO signal to the forward pass. All its parameters (component projections, GRU updater, output_proj, injection_gate, update_gate) are dead weight.",
+    "evidence": {
+      "model_py_line_129": "self.cot = InternalLatentCoT(config)",
+      "model_py_line_130": "self._freeze_cot()  # CoT disabled during pre-training",
+      "model_py_line_442_446": "cot_vector_seq = torch.zeros(batch_size, seq_length, total_cot_dim, device=device)",
+      "comment_at_line_508": "CoT update skipped during pre-training (cot_vector_seq stays zero)"
+    },
+    "corrected_theorem": "Either: (a) wire CoT into forward by calling self.cot(hidden_states, cot_vector_seq) per layer and threading cot_vector_seq across layers, or (b) delete the CoT module and remove all references. As-is, it is misleading documentation."
+  },
+  {
+    "id": "P10",
+    "claim": "IGRIS performs recursive inference with self-critique and persistent memory.",
+    "location": "igris/model.py:1-259; igris/variants.py:1-42",
+    "theorem": "For each block, recurrence loop runs recurrence_depth iterations. Each iteration: halt = \u03c3(W_h x), quality = \u03c3(W_q x), x \u2190 halt*quality * x + (1 - halt*quality) * block(x). Self-critique identifies errors and drives further recursion when quality is low.",
+    "test_design": "1. Instantiate IGRIS_Nano. 2. Check recurrence_depth. 3. Check that memory_vault is actually used. 4. Check that CritiqueModule does any comparison.",
+    "recurrence_depth": 3,
+    "num_layers": 6,
+    "memory_vault_used_in_forward": false,
+    "forward_source_excerpt": "    def forward(\n        self,\n        input_ids: torch.Tensor,\n        labels: Optional[torch.Tensor] = None,\n        return_dict: bool = True\n    ):\n        B, L = input_ids.shape\n        device = input_ids.device\n        \n        # Embeddings\n        x = self.token_embedding(input_ids) + self.pos_embedding(torch.arange(L, device=device))\n        \n        # Initialize Latent CoT (Monologue)\n        latent_state = None\n        if self.config.use_latent_cot:\n            latent_state = self.latent_cot(x)\n            x = x + self.cot_to_hidden(latent_state)\n        \n        total_recurrence_steps = 0\n        ponder_cost = 0.0\n        \n        # Layer Processing with Agentic Recursion\n        for block in self.blocks:\n            x = block(x)\n            \n            if self.config.recurrence_depth > 1:\n                for _ in range(self.config.recurrence_depth - 1):\n                    # 1. Decide Halt Probability\n                    halt_prob = self.router(x) # [B, L, 1]\n                    \n                    # 2. Evaluate State Quality (Self-Critique)\n                    quality = self.critique(x)\n                    \n                    # If quality is low, we ignore the halt_prob and keep thinking\n                    agentic_halt = halt_prob * quality\n                    ponder_cost = ponder_cost + agentic_halt.mean()\n                    \n                    # 3. Recursive thought step\n                    new_x = block(x)\n                    x = agentic_halt * x + (1 - agentic_halt) * new_x\n                    \n                    # 4. Update internal monologue during thinking\n                    if self.config.use_latent_cot:\n                        latent_state = self.latent_cot(x, latent_state)\n                        x = x + 0.1 * self.cot_to_hidden(latent_state) # Residual thought injection\n                    \n                    if agentic_halt.mean() > 0.8:\n                        break\n                    total_recurrence_steps += 1\n        \n        # ",
+    "CritiqueModule_source": "class CritiqueModule(nn.Module):\n    \"\"\"\n    Bit Upgrade: Identifies 'uncertainty' or 'errors' in the current latent state.\n    Used to drive further recursion if the state is low quality.\n    \"\"\"\n    def __init__(self, d_model):\n        super().__init__()\n        self.quality_eval = nn.Sequential(\n            nn.Linear(d_model, d_model // 2),\n            nn.GELU(),\n            nn.Linear(d_model // 2, 1),\n            nn.Sigmoid()\n        )\n    \n    def forward(self, x):\n        return self.quality_eval(x)\n",
+    "IGRIS_InternalLatentCoT_source": "class InternalLatentCoT(nn.Module):\n    \"\"\"\n    Bit Upgrade: Maintains a hidden 'reasoning state' that evolves.\n    This allows the model to 'think' in latent space across tokens.\n    \"\"\"\n    def __init__(self, d_model, cot_dim):\n        super().__init__()\n        self.cot_dim = cot_dim\n        self.update_gate = nn.Linear(d_model + cot_dim, cot_dim)\n        self.transform = nn.Sequential(\n            nn.Linear(cot_dim, cot_dim),\n            nn.GELU(),\n            nn.Linear(cot_dim, cot_dim)\n        )\n    \n    def forward(self, x, prev_cot=None):\n        # x: [B, L, D]\n        B, L, D = x.shape\n        if prev_cot is None:\n            prev_cot = torch.zeros(B, L, self.cot_dim, device=x.device)\n        \n        # Simple GRU-like update for latent reasoning\n        combined = torch.cat([x, prev_cot], dim=-1)\n        gate = torch.sigmoid(self.update_gate(combined))\n        thought = self.transform(prev_cot)\n        \n        new_cot = (1 - gate) * prev_cot + gate * thought\n        return new_cot\n",
+    "output_shape": [
+      1,
+      16,
+      10000
+    ],
+    "ponder_cost_sign": "POSITIVE (loss += 0.01 * ponder_cost)",
+    "ponder_cost_stated_purpose": "Penalize over-thinking",
+    "ponder_cost_actual": "ponder_cost = sum(agentic_halt.mean()). High agentic_halt = early exit = LESS thinking. So loss += 0.01 * ponder_cost PENALIZES halting, i.e., REWARDS over-thinking. Sign is INVERTED vs. stated purpose.",
+    "classification": "INCORRECT",
+    "theorem_violations": [
+      "memory_vault parameter (line 168) is defined but NEVER USED in forward \u2014 persistent memory claim is false.",
+      "FlashSSM (lines 77-92) is NOT an SSM \u2014 it is Conv1d + sigmoid-gated MLP. No state, no A/B/C matrices, no recurrence.",
+      "CritiqueModule (lines 58-73) is a 2-layer MLP \u2192 sigmoid scalar. It does NOT identify errors or compare states. It is a learned multiplicative gate on halt_prob.",
+      "IGRIS_InternalLatentCoT (lines 17-44) maintains latent_state of shape [B, L, cot_dim] \u2014 per-position, NOT cross-token. 'Across tokens' claim is false.",
+      "Ponder-cost sign is INVERTED: loss += 0.01 * ponder_cost penalizes halting (rewards over-thinking), opposite of stated purpose.",
+      "IGRIS_Micro fails to instantiate: hidden_size=512 not divisible by num_attention_heads=12."
+    ],
+    "corrected_theorem": "IGRIS as implemented is a recurrent block network with a learned per-token halt gate. It is NOT recursive inference with self-critique in the published sense (Universal Transformers, PonderNet). To match the claim: (a) wire memory_vault into forward, (b) replace FlashSSM with a real SSM, (c) make CritiqueModule compare two candidate states and output a corrective signal, (d) thread latent_state across forward calls (or document that persistence is within a sequence only), (e) fix ponder cost to loss += 0.01 * (1 - ponder_cost) or similar."
+  },
+  {
+    "id": "P11",
+    "claim": "SPPQ (Stability-Aware Progressive Progressive Quantization) provides progressive quantization with memory savings.",
+    "location": "xorzen/utils/sppq.py:1-1970",
+    "theorem": "(a) Quantization is progressive: bit-width decreases over training as parameters stabilize. (b) Quantization reduces memory: 8-bit quant of a 32-bit tensor saves 4\u00d7 memory. (c) Quantization is real: tensors are stored as int8/int4.",
+    "test_design": "1. Read SPPQEngine._quantize_parameter to see what dtype the result is. 2. Read _update_target_bits to see if progressive schedule is applied. 3. Read _get_target_bits for the bit-selection logic.",
+    "_quantize_parameter_source": "    def _quantize_parameter(self, state: QuantizationState, param: nn.Parameter):\n        \"\"\"Quantize a parameter.\"\"\"\n        logger.debug(\"sppq\", f\"Quantizing {state.name} from {state.bits} to {self._get_target_bits(state)} bits\")\n        \n        # Get target bits\n        target_bits = self._get_target_bits(state)\n        \n        if target_bits >= state.bits:\n            return  # Already at or above target\n        \n        # Choose quantization type\n        quant_type = QuantizationType(self.config.get(\"quant_type\", \"symmetric\"))\n        \n        # Quantize\n        if quant_type == QuantizationType.SYMMETRIC:\n            scale, zero_point, q_min, q_max = self.quantization_ops.quantize_symmetric(\n                param.data, target_bits, per_channel=True\n            )\n        elif quant_type == QuantizationType.ASYMMETRIC:\n            scale, zero_point, q_min, q_max = self.quantization_ops.quantize_asymmetric(\n                param.data, target_bits, per_channel=True\n            )\n        elif quant_type == QuantizationType.AFFINE:\n            scale, zero_point, q_min, q_max = self.quantization_ops.quantize_affine(\n                param.data, target_bits, per_channel=True\n            )\n        elif quant_type == QuantizationType.FLOAT:\n            scale, zero_point, q_min, q_max = self.quantization_ops.quantize_float(\n                param.data, target_bits\n            )\n        else:\n            raise ValueError(f\"Unsupported quantization type: {quant_type}\")\n        \n    ",
+    "stores_int8": false,
+    "stores_dequantized_float32": true,
+    "_get_target_bits_source": "    def _get_target_bits(self, state: QuantizationState) -> int:\n        \"\"\"Get target bit width for parameter.\"\"\"\n        # Progressive schedule based on training step\n        training_step = self.total_updates\n        \n        # Get available levels\n        available_levels = self.config.get(\"quant_levels\", [32, 16, 12, 8, 4])\n        \n        # Progressive schedule\n        if self.config.get(\"progressive_schedule\", True):\n            # Determine target based on training progress\n            progress = min(1.0, training_step / self.config.get(\"total_steps\", 100000))\n            \n            if progress < 0.2:\n                target = 32\n            elif progress < 0.5:\n                target = 16\n            elif progress < 0.8:\n                target = 12\n            elif progress < 0.95:\n                target = 8\n            else:\n                target = 4\n            \n            # Find closest available level\n            available_levels = sorted(available_levels)\n            for level in available_levels:\n                if level <= target:\n                    return level\n            \n            return available_levels[-1]\n        else:\n            # Use stability-based determination\n            return self.stability_analyzer.optimal_bit_width(\n                state.update_count,\n                state.stability_score,\n                state.bits,\n                available_levels\n            )\n",
+    "target_bits_bug": "_get_target_bits iterates sorted(available_levels) and returns the first level that is <= target. For target=16 with levels [4,8,12,16,32], it returns 4 (the smallest), not 16 (the closest). This causes massive over-quantization.",
+    "_update_target_bits_source": "    def _update_target_bits(self, target_bits: int):\n        \"\"\"Update target bit width for all parameters.\"\"\"\n        # This is handled by the engine based on stability\n        # The scheduler just provides the global target\n        pass\n",
+    "update_target_bits_is_pass": true,
+    "classification": "UNTESTED",
+    "error": "IndexError: index out of range in self",
+    "traceback": "t_p1_p14.py\", line 827, in verify_P11\n    _ = m(x)\n        ^^^^\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1778, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1789, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/z/my-project/xorzen_dev/xorzen/models/zero/model.py\", line 413, in forward\n    hidden_states = self.token_embedding(input_ids)  # [B, T, H]\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1778, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1789, in _call_impl\n    return forward_call(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/nn/modules/sparse.py\", line 189, in forward\n    return F.embedding(\n           ^^^^^^^^^^^^\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/nn/functional.py\", line 2615, in embedding\n    return torch.embedding(weight, input, padding_idx, scale_grad_by_freq, sparse)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nIndexError: index out of range in self\n"
+  },
+  {
+    "id": "P12",
+    "claim": "Active parameter percentage matches configured target_active_ratio (default 0.1 = 10%).",
+    "location": "config.py:497 (target_active_ratio=0.1); config.py:575-622 (estimate_active_parameters); model.py:706-752 (_estimate_active_params)",
+    "theorem": "active_params / total_params \u2248 target_active_ratio. For target=0.1, active should be ~10% of total.",
+    "test_design": "1. Instantiate each variant. 2. Read the init log for the active %. 3. Compute actual active params via the runtime estimator. 4. Compare to target_active_ratio.",
+    "total_params": 1034904,
+    "trainable_params": 935031,
+    "config_estimate_active_params": 44329,
+    "config_target_active_ratio": 0.1,
+    "active_pct_of_trainable_logged": 4.7,
+    "active_pct_of_trainable_computed": 4.740912333387877,
+    "active_pct_of_total_computed": 4.283392469253187,
+    "matches_target_active_ratio": false,
+    "classification": "UNTESTED",
+    "error": "TypeError: zeroModel._estimate_active_params() missing 1 required positional argument: 'routing_decision'",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/z/my-project/scripts/audit_p1_p14.py\", line 922, in verify_P12\n    runtime_active = m._estimate_active_params()\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: zeroModel._estimate_active_params() missing 1 required positional argument: 'routing_decision'\n"
+  },
+  {
+    "id": "P13",
+    "claim": "Xorzen decouples capacity from compute: total parameters (capacity) can grow with expert_count while active parameters (compute) stay bounded by top_k.",
+    "location": "config.py:575-622 (estimate_active_parameters); zmoe.py:414-640 (ShardedExpertFabric)",
+    "theorem": "Capacity = total params = always_on + E * p_e. Compute = active params per token \u2248 always_on + K * p_e. If E >> K, then Capacity / Compute \u2248 E/K >> 1, so capacity grows linearly with E while compute stays constant.",
+    "test_design": "1. Fix H=64, layers=3, K=2. Vary E from 2 to 64. 2. Measure actual FLOPs per forward. 3. If 'compute stays bounded' is true, FLOPs should be approximately constant.",
+    "classification": "UNTESTED",
+    "error": "ModuleNotFoundError: No module named 'scripts'",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/z/my-project/scripts/audit_p1_p14.py\", line 983, in verify_P13\n    from scripts.audit_flops import FlopCounter\nModuleNotFoundError: No module named 'scripts'\n"
+  },
+  {
+    "id": "P14",
+    "claim": "math_utils.py implements theoretical guarantees: 'analogous to Born rule', 'Bayes optimal' accuracy, 'Chinchilla scaling law', 'Theorem 1/2'.",
+    "location": "xorzen/utils/math_utils.py:137-140 (Born rule), 517 (Bayes optimal), 909-928 (Chinchilla), 459-471 (Theorem 1/2)",
+    "theorem": "Various theoretical claims embedded in comments and formulas.",
+    "test_design": "1. Read each claimed formula. 2. Compare to the published result. 3. Numerically verify behavior.",
+    "classification": "UNTESTED",
+    "error": "UnboundLocalError: cannot access local variable 'TensorStability' where it is not associated with a value",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/z/my-project/scripts/audit_p1_p14.py\", line 1063, in verify_P14\n    src_complex_softmax = inspect.getsource(TensorStability.complex_softmax) if hasattr(TensorStability, 'complex_softmax') else \"n/a\"\n                                                                                        ^^^^^^^^^^^^^^^\nUnboundLocalError: cannot access local variable 'TensorStability' where it is not associated with a value\n"
+  }
+]

@@ -1,0 +1,406 @@
+{
+  "zero_tiny_23k": {
+    "variant": "zero_tiny_23k",
+    "by_seq_len": {
+      "16": {
+        "linear_flops": 901632,
+        "conv_flops": 768,
+        "attn_flops_est": 4352,
+        "ssm_flops_est": 2048,
+        "total_flops_est": 908800,
+        "flops_per_token_est": 56800,
+        "framework_estimate_flops_per_token": 5120.0,
+        "framework_estimate_total": 81920.0,
+        "framework_per_token_x_actual_per_token": 0.09014084507042254,
+        "wall_time_sec": 0.009953633999430167,
+        "tokens_per_sec": 1607.4531172148766,
+        "by_component": {
+          "router": 614400,
+          "hass_local": 8192,
+          "hass_low_rank": 196608,
+          "hass_ssm": 21248,
+          "hass_ffn": 16384,
+          "moe_fabric": 24576,
+          "merger": 18944,
+          "lm_head": 2048
+        }
+      },
+      "32": {
+        "linear_flops": 1803264,
+        "conv_flops": 1536,
+        "attn_flops_est": 16896,
+        "ssm_flops_est": 4096,
+        "total_flops_est": 1825792,
+        "flops_per_token_est": 57056,
+        "framework_estimate_flops_per_token": 5120.0,
+        "framework_estimate_total": 163840.0,
+        "framework_per_token_x_actual_per_token": 0.08973639932697701,
+        "wall_time_sec": 0.005349627999748918,
+        "tokens_per_sec": 5981.724337000985,
+        "by_component": {
+          "router": 1228800,
+          "hass_local": 16384,
+          "hass_low_rank": 393216,
+          "hass_ssm": 42496,
+          "hass_ffn": 32768,
+          "moe_fabric": 49152,
+          "merger": 37888,
+          "lm_head": 4096
+        }
+      },
+      "64": {
+        "error": "ValueError: Sequence length 64 exceeds maximum 32"
+      },
+      "128": {
+        "error": "ValueError: Sequence length 128 exceeds maximum 32"
+      }
+    },
+    "config": {
+      "hidden_size": 8,
+      "num_layers": 1,
+      "num_attention_heads": 2,
+      "vocab_size": 8,
+      "expert_count": 1,
+      "top_k_experts": 1,
+      "expert_hidden_multiplier": 4.0,
+      "local_window_size": 128,
+      "low_rank_dim": 96,
+      "ssm_state_dim": 16,
+      "context_length": 32,
+      "tie_word_embeddings": true
+    }
+  },
+  "zero_1M": {
+    "variant": "zero_1M",
+    "by_seq_len": {
+      "16": {
+        "linear_flops": 28361728,
+        "conv_flops": 18432,
+        "attn_flops_est": 104448,
+        "ssm_flops_est": 6144,
+        "total_flops_est": 28490752,
+        "flops_per_token_est": 1780672,
+        "framework_estimate_flops_per_token": 3342336.0,
+        "framework_estimate_total": 53477376.0,
+        "framework_per_token_x_actual_per_token": 1.8770082306005822,
+        "wall_time_sec": 0.008884536000550725,
+        "tokens_per_sec": 1800.881891750814,
+        "by_component": {
+          "router": 1190912,
+          "hass_local": 1572864,
+          "hass_low_rank": 4718592,
+          "hass_ssm": 1198080,
+          "hass_ffn": 3145728,
+          "moe_fabric": 1572864,
+          "merger": 1126400,
+          "lm_head": 13854720
+        }
+      },
+      "32": {
+        "linear_flops": 56723456,
+        "conv_flops": 36864,
+        "attn_flops_est": 405504,
+        "ssm_flops_est": 12288,
+        "total_flops_est": 57178112,
+        "flops_per_token_est": 1786816,
+        "framework_estimate_flops_per_token": 3342336.0,
+        "framework_estimate_total": 106954752.0,
+        "framework_per_token_x_actual_per_token": 1.8705541029406498,
+        "wall_time_sec": 0.009184671000184608,
+        "tokens_per_sec": 3484.066005124932,
+        "by_component": {
+          "router": 2381824,
+          "hass_local": 3145728,
+          "hass_low_rank": 9437184,
+          "hass_ssm": 2396160,
+          "hass_ffn": 6291456,
+          "moe_fabric": 3145728,
+          "merger": 2252800,
+          "lm_head": 27709440
+        }
+      },
+      "64": {
+        "linear_flops": 113446912,
+        "conv_flops": 73728,
+        "attn_flops_est": 1597440,
+        "ssm_flops_est": 24576,
+        "total_flops_est": 115142656,
+        "flops_per_token_est": 1799104,
+        "framework_estimate_flops_per_token": 3342336.0,
+        "framework_estimate_total": 213909504.0,
+        "framework_per_token_x_actual_per_token": 1.8577780939845612,
+        "wall_time_sec": 0.017641163999542187,
+        "tokens_per_sec": 3627.878523302708,
+        "by_component": {
+          "router": 4763648,
+          "hass_local": 6291456,
+          "hass_low_rank": 18874368,
+          "hass_ssm": 4792320,
+          "hass_ffn": 12582912,
+          "moe_fabric": 6291456,
+          "merger": 4505600,
+          "lm_head": 55418880
+        }
+      },
+      "128": {
+        "linear_flops": 226893824,
+        "conv_flops": 147456,
+        "attn_flops_est": 6340608,
+        "ssm_flops_est": 49152,
+        "total_flops_est": 233431040,
+        "flops_per_token_est": 1823680,
+        "framework_estimate_flops_per_token": 3342336.0,
+        "framework_estimate_total": 427819008.0,
+        "framework_per_token_x_actual_per_token": 1.83274258641867,
+        "wall_time_sec": 0.018924234999758482,
+        "tokens_per_sec": 6763.813702463195,
+        "by_component": {
+          "router": 9527296,
+          "hass_local": 12582912,
+          "hass_low_rank": 37748736,
+          "hass_ssm": 9584640,
+          "hass_ffn": 25165824,
+          "moe_fabric": 12582912,
+          "merger": 9011200,
+          "lm_head": 110837760
+        }
+      }
+    },
+    "config": {
+      "hidden_size": 64,
+      "num_layers": 3,
+      "num_attention_heads": 4,
+      "vocab_size": 6765,
+      "expert_count": 2,
+      "top_k_experts": 1,
+      "expert_hidden_multiplier": 4.0,
+      "local_window_size": 128,
+      "low_rank_dim": 96,
+      "ssm_state_dim": 16,
+      "context_length": 128,
+      "tie_word_embeddings": true
+    }
+  },
+  "zero_10M": {
+    "variant": "zero_10M",
+    "by_seq_len": {
+      "16": {
+        "linear_flops": 219452416,
+        "conv_flops": 110592,
+        "attn_flops_est": 626688,
+        "ssm_flops_est": 12288,
+        "total_flops_est": 220201984,
+        "flops_per_token_est": 13762624,
+        "framework_estimate_flops_per_token": 230031360.0,
+        "framework_estimate_total": 3680501760.0,
+        "framework_per_token_x_actual_per_token": 16.7142079882441,
+        "wall_time_sec": 0.02089156800047931,
+        "tokens_per_sec": 765.85922127209,
+        "by_component": {
+          "router": 4031488,
+          "hass_local": 28311552,
+          "hass_low_rank": 28311552,
+          "hass_ssm": 16625664,
+          "hass_ffn": 56623104,
+          "moe_fabric": 14155776,
+          "merger": 10063872,
+          "lm_head": 61440000
+        }
+      },
+      "32": {
+        "linear_flops": 438904832,
+        "conv_flops": 221184,
+        "attn_flops_est": 2433024,
+        "ssm_flops_est": 24576,
+        "total_flops_est": 441583616,
+        "flops_per_token_est": 13799488,
+        "framework_estimate_flops_per_token": 230031360.0,
+        "framework_estimate_total": 7361003520.0,
+        "framework_per_token_x_actual_per_token": 16.669557595180343,
+        "wall_time_sec": 0.02278119200036599,
+        "tokens_per_sec": 1404.6674993778158,
+        "by_component": {
+          "router": 8062976,
+          "hass_local": 56623104,
+          "hass_low_rank": 56623104,
+          "hass_ssm": 33251328,
+          "hass_ffn": 113246208,
+          "moe_fabric": 28311552,
+          "merger": 20127744,
+          "lm_head": 122880000
+        }
+      },
+      "64": {
+        "linear_flops": 877809664,
+        "conv_flops": 442368,
+        "attn_flops_est": 9584640,
+        "ssm_flops_est": 49152,
+        "total_flops_est": 887885824,
+        "flops_per_token_est": 13873216,
+        "framework_estimate_flops_per_token": 230031360.0,
+        "framework_estimate_total": 14722007040.0,
+        "framework_per_token_x_actual_per_token": 16.580968680946075,
+        "wall_time_sec": 0.02970175699920219,
+        "tokens_per_sec": 2154.7546834255995,
+        "by_component": {
+          "router": 16125952,
+          "hass_local": 113246208,
+          "hass_low_rank": 113246208,
+          "hass_ssm": 66502656,
+          "hass_ffn": 226492416,
+          "moe_fabric": 56623104,
+          "merger": 40255488,
+          "lm_head": 245760000
+        }
+      },
+      "128": {
+        "linear_flops": 1755619328,
+        "conv_flops": 884736,
+        "attn_flops_est": 38043648,
+        "ssm_flops_est": 98304,
+        "total_flops_est": 1794646016,
+        "flops_per_token_est": 14020672,
+        "framework_estimate_flops_per_token": 230031360.0,
+        "framework_estimate_total": 29444014080.0,
+        "framework_per_token_x_actual_per_token": 16.406585932543035,
+        "wall_time_sec": 0.048495923000700714,
+        "tokens_per_sec": 2639.39713031445,
+        "by_component": {
+          "router": 32251904,
+          "hass_local": 226492416,
+          "hass_low_rank": 226492416,
+          "hass_ssm": 133005312,
+          "hass_ffn": 452984832,
+          "moe_fabric": 113246208,
+          "merger": 80510976,
+          "lm_head": 491520000
+        }
+      }
+    },
+    "config": {
+      "hidden_size": 192,
+      "num_layers": 6,
+      "num_attention_heads": 8,
+      "vocab_size": 10000,
+      "expert_count": 8,
+      "top_k_experts": 2,
+      "expert_hidden_multiplier": 4.0,
+      "local_window_size": 128,
+      "low_rank_dim": 96,
+      "ssm_state_dim": 16,
+      "context_length": 512,
+      "tie_word_embeddings": true
+    }
+  },
+  "zero_50M": {
+    "variant": "zero_50M",
+    "by_seq_len": {
+      "16": {
+        "linear_flops": 493837312,
+        "conv_flops": 245760,
+        "attn_flops_est": 1392640,
+        "ssm_flops_est": 20480,
+        "total_flops_est": 495496192,
+        "flops_per_token_est": 30968512,
+        "framework_estimate_flops_per_token": 1352663040.0,
+        "framework_estimate_total": 21642608640.0,
+        "framework_per_token_x_actual_per_token": 43.67865785737461,
+        "wall_time_sec": 0.03291870899920468,
+        "tokens_per_sec": 486.0457923907818,
+        "by_component": {
+          "router": 7117824,
+          "hass_local": 83886080,
+          "hass_low_rank": 62914560,
+          "hass_ssm": 47431680,
+          "hass_ffn": 167772160,
+          "moe_fabric": 25165824,
+          "merger": 17874944,
+          "lm_head": 81920000
+        }
+      },
+      "32": {
+        "linear_flops": 987674624,
+        "conv_flops": 491520,
+        "attn_flops_est": 5406720,
+        "ssm_flops_est": 40960,
+        "total_flops_est": 993613824,
+        "flops_per_token_est": 31050432,
+        "framework_estimate_flops_per_token": 1352663040.0,
+        "framework_estimate_total": 43285217280.0,
+        "framework_per_token_x_actual_per_token": 43.56342095337031,
+        "wall_time_sec": 0.04807360299946595,
+        "tokens_per_sec": 665.6459679203884,
+        "by_component": {
+          "router": 14235648,
+          "hass_local": 167772160,
+          "hass_low_rank": 125829120,
+          "hass_ssm": 94863360,
+          "hass_ffn": 335544320,
+          "moe_fabric": 50331648,
+          "merger": 35749888,
+          "lm_head": 163840000
+        }
+      },
+      "64": {
+        "linear_flops": 1975349248,
+        "conv_flops": 983040,
+        "attn_flops_est": 21299200,
+        "ssm_flops_est": 81920,
+        "total_flops_est": 1997713408,
+        "flops_per_token_est": 31214272,
+        "framework_estimate_flops_per_token": 1352663040.0,
+        "framework_estimate_total": 86570434560.0,
+        "framework_per_token_x_actual_per_token": 43.334761739758015,
+        "wall_time_sec": 0.05329360399991856,
+        "tokens_per_sec": 1200.8945763941542,
+        "by_component": {
+          "router": 28471296,
+          "hass_local": 335544320,
+          "hass_low_rank": 251658240,
+          "hass_ssm": 189726720,
+          "hass_ffn": 671088640,
+          "moe_fabric": 100663296,
+          "merger": 71499776,
+          "lm_head": 327680000
+        }
+      },
+      "128": {
+        "linear_flops": 3950698496,
+        "conv_flops": 1966080,
+        "attn_flops_est": 84541440,
+        "ssm_flops_est": 163840,
+        "total_flops_est": 4037369856,
+        "flops_per_token_est": 31541952,
+        "framework_estimate_flops_per_token": 1352663040.0,
+        "framework_estimate_total": 173140869120.0,
+        "framework_per_token_x_actual_per_token": 42.884569731131414,
+        "wall_time_sec": 0.13352109600054973,
+        "tokens_per_sec": 958.6500098791355,
+        "by_component": {
+          "router": 56942592,
+          "hass_local": 671088640,
+          "hass_low_rank": 503316480,
+          "hass_ssm": 379453440,
+          "hass_ffn": 1342177280,
+          "moe_fabric": 201326592,
+          "merger": 142999552,
+          "lm_head": 655360000
+        }
+      }
+    },
+    "config": {
+      "hidden_size": 256,
+      "num_layers": 10,
+      "num_attention_heads": 8,
+      "vocab_size": 10000,
+      "expert_count": 43,
+      "top_k_experts": 2,
+      "expert_hidden_multiplier": 4.0,
+      "local_window_size": 128,
+      "low_rank_dim": 96,
+      "ssm_state_dim": 16,
+      "context_length": 1024,
+      "tie_word_embeddings": true
+    }
+  }
+}

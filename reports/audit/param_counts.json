@@ -1,0 +1,659 @@
+{
+  "zero_tiny_23k": {
+    "variant": "zero_tiny_23k",
+    "actual_total_params": 37675,
+    "actual_trainable_params": 33478,
+    "component_breakdown": {
+      "embeddings": 320,
+      "cot": 4197,
+      "router": 20456,
+      "hass_local": 320,
+      "hass_low_rank": 7704,
+      "hass_ssm": 808,
+      "hass_pathway_gate": 1795,
+      "hass_ffn": 632,
+      "hass_layernorm": 32,
+      "moe_fabric": 768,
+      "merger": 635,
+      "final_norm": 8
+    },
+    "config_estimate_parameters": 1120,
+    "config_estimate_active_parameters": 681,
+    "config_target_active_ratio": 0.1,
+    "config_hidden_size": 8,
+    "config_num_layers": 1,
+    "config_vocab_size": 8,
+    "config_expert_count": 1,
+    "config_top_k_experts": 1,
+    "config_expert_hidden_multiplier": 4.0,
+    "config_context_length": 32,
+    "config_local_window_size": 128,
+    "config_low_rank_dim": 96,
+    "config_ssm_state_dim": 16,
+    "config_cot_dim": 2,
+    "config_cot_components": 6,
+    "config_width_choices": [
+      8
+    ],
+    "config_tie_word_embeddings": true,
+    "model_runtime_active_estimate_error": "zeroModel._estimate_active_params() missing 1 required positional argument: 'routing_decision'",
+    "variant_PARAM_COUNT": 37824,
+    "active_pct_of_total": 1.807564698075647,
+    "active_pct_of_trainable": 2.0341716948443755,
+    "forward_smoke_test": "pass",
+    "forward_logits_shape": [
+      1,
+      16,
+      8
+    ],
+    "computed_expert_params_per_expert_swiglu": 864,
+    "computed_full_expert_pool_params_swiglu": 864,
+    "computed_total_with_full_experts_swiglu": 38539,
+    "computed_full_expert_pool_params_2proj": 512,
+    "computed_total_with_full_experts_2proj": 38187,
+    "discrepancies": [
+      {
+        "claim": "variant.PARAM_COUNT == test_mode_total",
+        "claimed": 37824,
+        "actual": 37675,
+        "delta": 149,
+        "pct_off": 0.39392978003384094
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_swiglu",
+        "claimed": 37824,
+        "actual": 38539,
+        "delta": -715,
+        "pct_off": -1.890334179357022
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_2proj",
+        "claimed": 37824,
+        "actual": 38187,
+        "delta": -363,
+        "pct_off": -0.9597081218274112
+      },
+      {
+        "claim": "config.estimate_parameters() == test_mode_total",
+        "claimed": 1120,
+        "actual": 37675,
+        "delta": -36555,
+        "pct_off": -3263.839285714286
+      }
+    ]
+  },
+  "zero_1M": {
+    "variant": "zero_1M",
+    "actual_total_params": 1034904,
+    "actual_trainable_params": 935031,
+    "component_breakdown": {
+      "embeddings": 441152,
+      "cot": 99873,
+      "router": 38475,
+      "hass_local": 50304,
+      "hass_low_rank": 152640,
+      "hass_ssm": 38880,
+      "hass_pathway_gate": 26889,
+      "hass_ffn": 101184,
+      "hass_layernorm": 768,
+      "moe_fabric": 49152,
+      "merger": 35523,
+      "final_norm": 64
+    },
+    "config_estimate_parameters": 589376,
+    "config_estimate_active_parameters": 44329,
+    "config_target_active_ratio": 0.1,
+    "config_hidden_size": 64,
+    "config_num_layers": 3,
+    "config_vocab_size": 6765,
+    "config_expert_count": 2,
+    "config_top_k_experts": 1,
+    "config_expert_hidden_multiplier": 4.0,
+    "config_context_length": 128,
+    "config_local_window_size": 128,
+    "config_low_rank_dim": 96,
+    "config_ssm_state_dim": 16,
+    "config_cot_dim": 16,
+    "config_cot_components": 6,
+    "config_width_choices": [
+      64
+    ],
+    "config_tie_word_embeddings": true,
+    "model_runtime_active_estimate_error": "zeroModel._estimate_active_params() missing 1 required positional argument: 'routing_decision'",
+    "variant_PARAM_COUNT": 1077503,
+    "active_pct_of_total": 4.283392469253187,
+    "active_pct_of_trainable": 4.740912333387877,
+    "forward_smoke_test": "pass",
+    "forward_logits_shape": [
+      1,
+      16,
+      6765
+    ],
+    "computed_expert_params_per_expert_swiglu": 49920,
+    "computed_full_expert_pool_params_swiglu": 99840,
+    "computed_total_with_full_experts_swiglu": 1134744,
+    "computed_full_expert_pool_params_2proj": 65536,
+    "computed_total_with_full_experts_2proj": 1100440,
+    "discrepancies": [
+      {
+        "claim": "variant.PARAM_COUNT == test_mode_total",
+        "claimed": 1077503,
+        "actual": 1034904,
+        "delta": 42599,
+        "pct_off": 3.9534924728747853
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_swiglu",
+        "claimed": 1077503,
+        "actual": 1134744,
+        "delta": -57241,
+        "pct_off": -5.312375000348027
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_2proj",
+        "claimed": 1077503,
+        "actual": 1100440,
+        "delta": -22937,
+        "pct_off": -2.1287179710868553
+      },
+      {
+        "claim": "config.estimate_parameters() == test_mode_total",
+        "claimed": 589376,
+        "actual": 1034904,
+        "delta": -445528,
+        "pct_off": -75.59316972526877
+      }
+    ]
+  },
+  "zero_10M": {
+    "variant": "zero_10M",
+    "actual_total_params": 8151307,
+    "actual_trainable_params": 7385258,
+    "component_breakdown": {
+      "embeddings": 2018304,
+      "cot": 766049,
+      "router": 127637,
+      "hass_local": 890496,
+      "hass_low_rank": 897408,
+      "hass_ssm": 527040,
+      "hass_pathway_gate": 152082,
+      "hass_ffn": 2009664,
+      "hass_layernorm": 4608,
+      "moe_fabric": 442368,
+      "merger": 315459,
+      "final_norm": 192
+    },
+    "config_estimate_parameters": 4677120,
+    "config_estimate_active_parameters": 733948,
+    "config_target_active_ratio": 0.1,
+    "config_hidden_size": 192,
+    "config_num_layers": 6,
+    "config_vocab_size": 10000,
+    "config_expert_count": 8,
+    "config_top_k_experts": 2,
+    "config_expert_hidden_multiplier": 4.0,
+    "config_context_length": 512,
+    "config_local_window_size": 128,
+    "config_low_rank_dim": 96,
+    "config_ssm_state_dim": 16,
+    "config_cot_dim": 48,
+    "config_cot_components": 6,
+    "config_width_choices": [
+      96,
+      192
+    ],
+    "config_tie_word_embeddings": true,
+    "model_runtime_active_estimate_error": "zeroModel._estimate_active_params() missing 1 required positional argument: 'routing_decision'",
+    "variant_PARAM_COUNT": 10970548,
+    "active_pct_of_total": 9.004052969664865,
+    "active_pct_of_trainable": 9.938014352376044,
+    "forward_smoke_test": "pass",
+    "forward_logits_shape": [
+      1,
+      16,
+      10000
+    ],
+    "computed_expert_params_per_expert_swiglu": 444672,
+    "computed_full_expert_pool_params_swiglu": 3557376,
+    "computed_total_with_full_experts_swiglu": 11708683,
+    "computed_full_expert_pool_params_2proj": 2359296,
+    "computed_total_with_full_experts_2proj": 10510603,
+    "discrepancies": [
+      {
+        "claim": "variant.PARAM_COUNT == test_mode_total",
+        "claimed": 10970548,
+        "actual": 8151307,
+        "delta": 2819241,
+        "pct_off": 25.69826958507451
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_swiglu",
+        "claimed": 10970548,
+        "actual": 11708683,
+        "delta": -738135,
+        "pct_off": -6.728332987559053
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_2proj",
+        "claimed": 10970548,
+        "actual": 10510603,
+        "delta": 459945,
+        "pct_off": 4.192543526540334
+      },
+      {
+        "claim": "config.estimate_parameters() == test_mode_total",
+        "claimed": 4677120,
+        "actual": 8151307,
+        "delta": -3474187,
+        "pct_off": -74.28047601943076
+      }
+    ]
+  },
+  "zero_50M": {
+    "variant": "zero_50M",
+    "actual_total_params": 18133854,
+    "actual_trainable_params": 16801245,
+    "component_breakdown": {
+      "embeddings": 2822144,
+      "cot": 1332609,
+      "router": 224508,
+      "hass_local": 2634240,
+      "hass_low_rank": 1989120,
+      "hass_ssm": 1498560,
+      "hass_pathway_gate": 335390,
+      "hass_ffn": 5940480,
+      "hass_layernorm": 10240,
+      "moe_fabric": 786432,
+      "merger": 559875,
+      "final_norm": 256
+    },
+    "config_estimate_parameters": 10696704,
+    "config_estimate_active_parameters": 1451468,
+    "config_target_active_ratio": 0.1,
+    "config_hidden_size": 256,
+    "config_num_layers": 10,
+    "config_vocab_size": 10000,
+    "config_expert_count": 43,
+    "config_top_k_experts": 2,
+    "config_expert_hidden_multiplier": 4.0,
+    "config_context_length": 1024,
+    "config_local_window_size": 128,
+    "config_low_rank_dim": 96,
+    "config_ssm_state_dim": 16,
+    "config_cot_dim": 64,
+    "config_cot_components": 6,
+    "config_width_choices": [
+      128,
+      256
+    ],
+    "config_tie_word_embeddings": true,
+    "model_runtime_active_estimate_error": "zeroModel._estimate_active_params() missing 1 required positional argument: 'routing_decision'",
+    "variant_PARAM_COUNT": 50399371,
+    "active_pct_of_total": 8.004189291476594,
+    "active_pct_of_trainable": 8.639050260858644,
+    "forward_smoke_test": "pass",
+    "forward_logits_shape": [
+      1,
+      16,
+      10000
+    ],
+    "computed_expert_params_per_expert_swiglu": 789504,
+    "computed_full_expert_pool_params_swiglu": 33948672,
+    "computed_total_with_full_experts_swiglu": 52082526,
+    "computed_full_expert_pool_params_2proj": 22544384,
+    "computed_total_with_full_experts_2proj": 40678238,
+    "discrepancies": [
+      {
+        "claim": "variant.PARAM_COUNT == test_mode_total",
+        "claimed": 50399371,
+        "actual": 18133854,
+        "delta": 32265517,
+        "pct_off": 64.01968191230006
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_swiglu",
+        "claimed": 50399371,
+        "actual": 52082526,
+        "delta": -1683155,
+        "pct_off": -3.3396349331423205
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_2proj",
+        "claimed": 50399371,
+        "actual": 40678238,
+        "delta": 9721133,
+        "pct_off": 19.28820302142263
+      },
+      {
+        "claim": "config.estimate_parameters() == test_mode_total",
+        "claimed": 10696704,
+        "actual": 18133854,
+        "delta": -7437150,
+        "pct_off": -69.52749183299828
+      }
+    ]
+  },
+  "zero_277M": {
+    "variant": "zero_277M",
+    "actual_total_params": 82604607,
+    "actual_trainable_params": 80747198,
+    "component_breakdown": {
+      "embeddings": 17880064,
+      "cot": 1857409,
+      "router": 291508,
+      "hass_local": 13661440,
+      "hass_low_rank": 5151744,
+      "hass_ssm": 7302880,
+      "hass_pathway_gate": 861991,
+      "hass_ffn": 30780672,
+      "hass_layernorm": 26624,
+      "moe_fabric": 3145728,
+      "merger": 1644035,
+      "final_norm": 512
+    },
+    "config_estimate_parameters": 58801152,
+    "config_estimate_active_parameters": 6236659,
+    "config_target_active_ratio": 0.1,
+    "config_hidden_size": 512,
+    "config_num_layers": 13,
+    "config_vocab_size": 33898,
+    "config_expert_count": 64,
+    "config_top_k_experts": 2,
+    "config_expert_hidden_multiplier": 4.0,
+    "config_context_length": 1024,
+    "config_local_window_size": 128,
+    "config_low_rank_dim": 96,
+    "config_ssm_state_dim": 16,
+    "config_cot_dim": 64,
+    "config_cot_components": 6,
+    "config_width_choices": [
+      256,
+      512
+    ],
+    "config_tie_word_embeddings": true,
+    "model_runtime_active_estimate_error": "zeroModel._estimate_active_params() missing 1 required positional argument: 'routing_decision'",
+    "variant_PARAM_COUNT": 277000335,
+    "active_pct_of_total": 7.5500135240640995,
+    "active_pct_of_trainable": 7.723684727735073,
+    "forward_smoke_test": "pass",
+    "forward_logits_shape": [
+      1,
+      16,
+      33898
+    ],
+    "computed_expert_params_per_expert_swiglu": 3151872,
+    "computed_full_expert_pool_params_swiglu": 201719808,
+    "computed_total_with_full_experts_swiglu": 284324415,
+    "computed_full_expert_pool_params_2proj": 134217728,
+    "computed_total_with_full_experts_2proj": 216822335,
+    "discrepancies": [
+      {
+        "claim": "variant.PARAM_COUNT == test_mode_total",
+        "claimed": 277000335,
+        "actual": 82604607,
+        "delta": 194395728,
+        "pct_off": 70.17887830352262
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_swiglu",
+        "claimed": 277000335,
+        "actual": 284324415,
+        "delta": -7324080,
+        "pct_off": -2.6440690044652833
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_2proj",
+        "claimed": 277000335,
+        "actual": 216822335,
+        "delta": 60178000,
+        "pct_off": 21.72488347351638
+      },
+      {
+        "claim": "config.estimate_parameters() == test_mode_total",
+        "claimed": 58801152,
+        "actual": 82604607,
+        "delta": -23803455,
+        "pct_off": -40.481273224034794
+      }
+    ]
+  },
+  "zero_500M": {
+    "variant": "zero_500M",
+    "actual_total_params": 172907600,
+    "actual_trainable_params": 164907023,
+    "component_breakdown": {
+      "embeddings": 46563200,
+      "cot": 8000577,
+      "router": 1387612,
+      "hass_local": 26260480,
+      "hass_low_rank": 7919616,
+      "hass_ssm": 13856256,
+      "hass_pathway_gate": 1323056,
+      "hass_ffn": 59151360,
+      "hass_layernorm": 40960,
+      "moe_fabric": 4915200,
+      "merger": 3488643,
+      "final_norm": 640
+    },
+    "config_estimate_parameters": 125247360,
+    "config_estimate_active_parameters": 9613216,
+    "config_target_active_ratio": 0.08,
+    "config_hidden_size": 640,
+    "config_num_layers": 16,
+    "config_vocab_size": 64563,
+    "config_expert_count": 69,
+    "config_top_k_experts": 2,
+    "config_expert_hidden_multiplier": 4.0,
+    "config_context_length": 8192,
+    "config_local_window_size": 128,
+    "config_low_rank_dim": 96,
+    "config_ssm_state_dim": 16,
+    "config_cot_dim": 160,
+    "config_cot_components": 6,
+    "config_width_choices": [
+      320,
+      640
+    ],
+    "config_tie_word_embeddings": true,
+    "model_runtime_active_estimate_error": "zeroModel._estimate_active_params() missing 1 required positional argument: 'routing_decision'",
+    "variant_PARAM_COUNT": 500000083,
+    "active_pct_of_total": 5.559741734891931,
+    "active_pct_of_trainable": 5.829476407442029,
+    "forward_smoke_test": "pass",
+    "forward_logits_shape": [
+      1,
+      16,
+      64563
+    ],
+    "computed_expert_params_per_expert_swiglu": 4922880,
+    "computed_full_expert_pool_params_swiglu": 339678720,
+    "computed_total_with_full_experts_swiglu": 512586320,
+    "computed_full_expert_pool_params_2proj": 226099200,
+    "computed_total_with_full_experts_2proj": 399006800,
+    "discrepancies": [
+      {
+        "claim": "variant.PARAM_COUNT == test_mode_total",
+        "claimed": 500000083,
+        "actual": 172907600,
+        "delta": 327092483,
+        "pct_off": 65.41848574053137
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_swiglu",
+        "claimed": 500000083,
+        "actual": 512586320,
+        "delta": -12586237,
+        "pct_off": -2.517246982137001
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_2proj",
+        "claimed": 500000083,
+        "actual": 399006800,
+        "delta": 100993283,
+        "pct_off": 20.19865324702356
+      },
+      {
+        "claim": "config.estimate_parameters() == test_mode_total",
+        "claimed": 125247360,
+        "actual": 172907600,
+        "delta": -47660240,
+        "pct_off": -38.05288989724015
+      }
+    ]
+  },
+  "zero_1_3B": {
+    "variant": "zero_1_3B",
+    "actual_total_params": 413518347,
+    "actual_trainable_params": 397959498,
+    "component_breakdown": {
+      "embeddings": 68270720,
+      "cot": 15558849,
+      "router": 2709375,
+      "hass_local": 77167104,
+      "hass_low_rank": 16616448,
+      "hass_ssm": 40107264,
+      "hass_pathway_gate": 2771016,
+      "hass_ffn": 173763072,
+      "hass_layernorm": 86016,
+      "moe_fabric": 9633792,
+      "merger": 6833795,
+      "final_norm": 896
+    },
+    "config_estimate_parameters": 299567744,
+    "config_estimate_active_parameters": 20138415,
+    "config_target_active_ratio": 0.07,
+    "config_hidden_size": 896,
+    "config_num_layers": 24,
+    "config_vocab_size": 68003,
+    "config_expert_count": 64,
+    "config_top_k_experts": 2,
+    "config_expert_hidden_multiplier": 4.0,
+    "config_context_length": 8192,
+    "config_local_window_size": 128,
+    "config_low_rank_dim": 96,
+    "config_ssm_state_dim": 16,
+    "config_cot_dim": 224,
+    "config_cot_components": 6,
+    "config_width_choices": [
+      448,
+      896
+    ],
+    "config_tie_word_embeddings": true,
+    "model_runtime_active_estimate_error": "zeroModel._estimate_active_params() missing 1 required positional argument: 'routing_decision'",
+    "variant_PARAM_COUNT": 1000000886,
+    "active_pct_of_total": 4.870017290913576,
+    "active_pct_of_trainable": 5.060418233817352,
+    "forward_smoke_test": "pass",
+    "forward_logits_shape": [
+      1,
+      16,
+      68003
+    ],
+    "computed_expert_params_per_expert_swiglu": 9644544,
+    "computed_full_expert_pool_params_swiglu": 617250816,
+    "computed_total_with_full_experts_swiglu": 1030769163,
+    "computed_full_expert_pool_params_2proj": 411041792,
+    "computed_total_with_full_experts_2proj": 824560139,
+    "discrepancies": [
+      {
+        "claim": "variant.PARAM_COUNT == test_mode_total",
+        "claimed": 1000000886,
+        "actual": 413518347,
+        "delta": 586482539,
+        "pct_off": 58.64820193769308
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_swiglu",
+        "claimed": 1000000886,
+        "actual": 1030769163,
+        "delta": -30768277,
+        "pct_off": -3.076824973933073
+      },
+      {
+        "claim": "variant.PARAM_COUNT == full_expert_2proj",
+        "claimed": 1000000886,
+        "actual": 824560139,
+        "delta": 175440747,
+        "pct_off": 17.544059155963588
+      },
+      {
+        "claim": "config.estimate_parameters() == test_mode_total",
+        "claimed": 299567744,
+        "actual": 413518347,
+        "delta": -113950603,
+        "pct_off": -38.038342005206005
+      }
+    ]
+  },
+  "IGRIS_Nano": {
+    "variant": "IGRIS_Nano",
+    "actual_total_params": 11538584,
+    "actual_trainable_params": 11538584,
+    "component_breakdown": {
+      "other:memory_vault": 8192,
+      "embeddings": 2560000,
+      "other:pos_embedding": 2097152,
+      "hass_other:mix_gate": 6,
+      "hass_layernorm": 6144,
+      "hass_other:ssm": 1586688,
+      "hass_other:attn": 1973760,
+      "hass_other:mlp": 3153408,
+      "other:latent_cot": 82304,
+      "other:cot_to_hidden": 33024,
+      "other:action_head": 4112,
+      "other:critique": 33025,
+      "router": 257,
+      "other:ln_f": 512
+    },
+    "config_estimate_parameters": 9381888,
+    "config_estimate_active_parameters": 2539863,
+    "config_target_active_ratio": 0.1,
+    "config_hidden_size": 256,
+    "config_num_layers": 6,
+    "config_vocab_size": 10000,
+    "config_expert_count": 192,
+    "config_top_k_experts": 2,
+    "config_expert_hidden_multiplier": 4.0,
+    "config_context_length": 8192,
+    "config_local_window_size": 128,
+    "config_low_rank_dim": 96,
+    "config_ssm_state_dim": 16,
+    "config_cot_dim": 256,
+    "config_cot_components": 6,
+    "config_width_choices": [
+      384,
+      768,
+      1152,
+      1536,
+      2048
+    ],
+    "config_tie_word_embeddings": true,
+    "active_pct_of_total": 22.011912380236605,
+    "active_pct_of_trainable": 22.011912380236605,
+    "forward_smoke_test": "pass",
+    "forward_logits_shape": [
+      1,
+      16,
+      10000
+    ],
+    "computed_expert_params_per_expert_swiglu": 789504,
+    "computed_full_expert_pool_params_swiglu": 151584768,
+    "computed_total_with_full_experts_swiglu": 163123352,
+    "computed_full_expert_pool_params_2proj": 100663296,
+    "computed_total_with_full_experts_2proj": 112201880,
+    "discrepancies": [
+      {
+        "claim": "config.estimate_parameters() == test_mode_total",
+        "claimed": 9381888,
+        "actual": 11538584,
+        "delta": -2156696,
+        "pct_off": -22.987867687186203
+      }
+    ]
+  },
+  "IGRIS_Micro": {
+    "variant": "IGRIS_Micro",
+    "error": "ValueError: hidden_size (512) must be divisible by num_attention_heads (12)",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/z/my-project/scripts/audit_param_counts.py\", line 115, in instantiate\n    m = IGRIS_Micro()\n        ^^^^^^^^^^^^^\n  File \"/home/z/my-project/xorzen_dev/xorzen/models/igris/variants.py\", line 29, in IGRIS_Micro\n    config = IGRISConfig(\n             ^^^^^^^^^^^^\n  File \"<string>\", line 76, in __init__\n  File \"/home/z/my-project/xorzen_dev/xorzen/models/igris/config.py\", line 32, in __post_init__\n    super().__post_init__()\n  File \"/home/z/my-project/xorzen_dev/xorzen/config.py\", line 513, in __post_init__\n    raise ValueError(\nValueError: hidden_size (512) must be divisible by num_attention_heads (12)\n"
+  }
+}
