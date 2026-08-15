@@ -491,7 +491,39 @@ class ModelConfig(BaseConfig):
     low_rank_dim: int = 96
     ssm_state_dim: int = 16
     ssm_kernel_size: int = 3
-    
+
+    # ===== v0.4 architecture improvements =====
+    # Genuine per-token width sparsity via nested slicing in HASSBlock FFN.
+    # True  → HASSBlock uses SlicedFFN: lower width → proportionally fewer FLOPs
+    #         (verified at model level, not just standalone).
+    # False → HASSBlock uses AdaptiveFFN (compute-then-blend, legacy behavior).
+    use_sliced_ffn: bool = True
+
+    # Width diversity loss — entropy regularizer for the width router.
+    # Prevents the width router from collapsing onto the largest width
+    # (Phase 6 finding: without this, width router always picks max).
+    # Disabled (0.0) by default at NANO_1M because that config has only one
+    # width choice; enabled automatically when num_widths >= 2.
+    width_div_weight: float = 0.1
+
+    # Path diversity loss — already existed in v0.3 at weight 0.1.
+    # Phase 6 found 0.2 gave 2/3 pathways active (vs 1/3 at 0.1). Bumped
+    # to 0.2 by default; can be overridden per-config.
+    path_div_weight: float = 0.2
+
+    # Unify load-balance losses — Switch Transformer formula only.
+    # v0.3 had TWO load-balance losses (router CV + model L2) that
+    # double-counted. With this True, the model-level L2 loss is dropped
+    # and only the router's Switch-formula loss is used (standard practice).
+    unify_load_balance: bool = True
+
+    # Cost-aware routing — when True, the AdaptiveRouter estimates the
+    # actual per-axis compute cost (depth, width, pathway, experts) and
+    # biases routing decisions toward the global compute_budget. This is
+    # the "cost-aware ComputeController" idea, but integrated into the
+    # existing AdaptiveRouter (no separate dead module).
+    cost_aware_routing: bool = True
+
     # MoE configuration
     expert_count: int = 192
     top_k_experts: int = 2

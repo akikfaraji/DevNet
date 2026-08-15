@@ -821,14 +821,43 @@ class HASSBlock(nn.Module):
             nn.Linear(128, 3),  # 3 pathways
         )
         
-        # Adaptive FFN
-        self.ffn = AdaptiveFFN(
-            hidden_dim=config.hidden_size,
-            ffn_multiplier=4.0,
-            activation=config.hidden_act,
-            dropout=config.dropout,
-            width_choices=config.width_choices
-        )
+        # Adaptive FFN — v0.4: choose between SlicedFFN (genuine per-token
+        # width sparsity via nested slicing) and the legacy AdaptiveFFN
+        # (compute-then-blend, NOT genuine sparsity).
+        # SlicedFFN is the v0.4 default; set config.use_sliced_ffn=False to
+        # preserve the v0.3 behavior for ablation comparison.
+        from xorzen.model.components.sliced_ffn import SlicedFFN
+        self.use_sliced_ffn = bool(getattr(config, 'use_sliced_ffn', True))
+        if self.use_sliced_ffn:
+            # max_width = hidden * ffn_multiplier (matches base_ffn_dim of AdaptiveFFN)
+            max_width = int(config.hidden_size * 4.0)
+            # width_choices are nested subsets of max_width. SlicedFFN requires
+            # all widths to be <= max_width; the config's width_choices may
+            # already include max_width. If not, we add it.
+            wc = list(config.width_choices)
+            if max_width not in wc:
+                wc = sorted(set(wc + [max_width]))
+            self.ffn = SlicedFFN(
+                hidden_dim=config.hidden_size,
+                max_width=max_width,
+                activation=config.hidden_act,
+                dropout=config.dropout,
+                width_choices=wc,
+            )
+            logger.info("hass",
+                       f"HASSBlock {layer_idx}: using SlicedFFN "
+                       f"(genuine width sparsity), widths={wc}")
+        else:
+            self.ffn = AdaptiveFFN(
+                hidden_dim=config.hidden_size,
+                ffn_multiplier=4.0,
+                activation=config.hidden_act,
+                dropout=config.dropout,
+                width_choices=config.width_choices
+            )
+            logger.info("hass",
+                       f"HASSBlock {layer_idx}: using legacy AdaptiveFFN "
+                       f"(compute-then-blend, no genuine sparsity)")
         
         # Layer norms
         self.ln1 = nn.LayerNorm(config.hidden_size)
@@ -1013,11 +1042,32 @@ class HASSBlock(nn.Module):
         x_ffn = self.ln2(x)
 
         if routing_decision is not None:
-            width_multiplier = routing_decision.width_multiplier
-            width_idx = routing_decision.width_idx
-            ffn_out = self.ffn(x_ffn, width_multiplier, width_idx)
+            if self.use_sliced_ffn:
+                # SlicedFFN API: takes width_idx (inference) or width_probs (training).
+                # At training, SlicedFFN uses STE — forward uses hard argmax width
+                # per token (genuine sparsity), backward sees soft probs.
+                # At inference, per-token width grouping is used.
+                if self.training:
+                    ffn_out = self.ffn(
+                        x_ffn,
+                        width_probs=routing_decision.width_probs,
+                    )
+                else:
+                    ffn_out = self.ffn(
+                        x_ffn,
+                        width_idx=routing_decision.width_idx,
+                    )
+            else:
+                # Legacy AdaptiveFFN API
+                width_multiplier = routing_decision.width_multiplier
+                width_idx = routing_decision.width_idx
+                ffn_out = self.ffn(x_ffn, width_multiplier, width_idx)
         else:
-            ffn_out = self.ffn(x_ffn)
+            # No routing decision — use max width (dense).
+            if self.use_sliced_ffn:
+                ffn_out = self.ffn(x_ffn)  # defaults to max_width
+            else:
+                ffn_out = self.ffn(x_ffn)
 
         x = x + self.dropout(ffn_out)
         return x

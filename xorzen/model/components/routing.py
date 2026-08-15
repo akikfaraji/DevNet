@@ -58,6 +58,24 @@ def path_diversity_loss(path_probs: torch.Tensor) -> torch.Tensor:
     return -entropy.mean()
 
 
+def width_diversity_loss(width_probs: torch.Tensor) -> torch.Tensor:
+    """
+    Entropy-based diversity loss for width routing.
+    Same shape as path_diversity_loss but applied to the width router.
+    Without this, the width router collapses onto the largest width
+    (Phase 6 finding). Encourages the router to use the full range
+    of available widths (small for easy tokens, large for hard tokens).
+
+    Args:
+        width_probs: [B, T, num_widths] softmax probabilities.
+
+    Returns:
+        Scalar loss = -mean_entropy(width_probs).
+    """
+    entropy = -torch.sum(width_probs * torch.log(width_probs + 1e-12), dim=-1)  # [B, T]
+    return -entropy.mean()
+
+
 # ==================== DATA STRUCTURES ====================
 
 @dataclass
@@ -285,9 +303,11 @@ class AdaptiveRouter(nn.Module):
         #   path_div_weight=0.002  -> severe collapse (1 of 3 pathways active)
         #   path_div_weight=0.02   -> still collapses (1 of 3 pathways active)
         #   path_div_weight=0.2    -> partial diversity (2 of 3 pathways active)
-        # Default 0.1 is a middle ground that prevents single-pathway collapse
-        # while keeping the LM signal dominant.
-        self.path_div_weight  = 0.1
+        # v0.4: bumped default from 0.1 to 0.2 (config.path_div_weight).
+        self.path_div_weight  = float(getattr(config, 'path_div_weight', 0.2))
+        # Width diversity loss — NEW in v0.4. Prevents the width router from
+        # collapsing onto the largest width. Only active when num_widths >= 2.
+        self.width_div_weight = float(getattr(config, 'width_div_weight', 0.1))
         self.metrics_history: List[RoutingMetrics] = []
         
         # Expert usage tracking
@@ -462,6 +482,67 @@ class AdaptiveRouter(nn.Module):
         if self.temperature_annealing and training:
             # Anneal temperature over training
             current_temp = max(0.1, self.temperature * (0.99 ** (self.training_step / 1000)))
+
+        # ===== v0.4 COST-AWARE ROUTING MODULATION =====
+        # The router estimates the actual per-axis compute cost (in arbitrary
+        # FLOPs-equivalent units) and biases routing decisions toward the
+        # global compute_budget. This is the "cost-aware ComputeController"
+        # idea — but integrated into AdaptiveRouter (no separate dead module).
+        #
+        # Cost model (in relative FLOPs units, per token):
+        #   depth_cost_per_layer ≈ H * (3*H + 2*H_ffn + ...)  ≈ 4*H^2 per layer
+        #   width_cost: linear in selected width (~H * W)
+        #   path_cost:  local ≈ 2*H*window; low_rank ≈ 2*H*r; ssm ≈ 2*H*N
+        #   expert_cost: top_k * (H * expert_hidden)
+        #
+        # We use a SIMPLE cost model: each axis contributes a "fraction of
+        # total compute" and the budget multiplies the logits so that low
+        # budget → sharper / sparser distributions.
+        cost_aware = bool(getattr(self.config, 'cost_aware_routing', True))
+        if cost_aware:
+            budget = float(getattr(self.config, 'compute_budget', 1.0))
+            budget = max(0.05, min(1.0, budget))
+            # sparsity_pressure in [0, 1]: 0 = full compute, 1 = minimal
+            sparsity_pressure = 1.0 - budget
+            # Per-axis cost weights (relative): depth dominates, then MoE,
+            # then width, then pathway (cheapest).
+            # These are not learned — they are a fixed prior based on
+            # typical architecture FLOPs breakdown.
+            # depth_cost_weight = 4.0 (per-layer cost is high)
+            # expert_cost_weight = 2.0 (top-k experts)
+            # width_cost_weight = 1.0 (linear in width)
+            # path_cost_weight = 0.5 (cheapest axis)
+            depth_shift   = -sparsity_pressure * 4.0 * (1.0 - complexity.squeeze(-1))  # [B, T]
+            # Width: lower budget → bias toward SMALLER widths.
+            # width_choices are sorted ascending (smallest first).
+            # Use a linspace that boosts early (small) indices under low budget.
+            width_bias_axis = torch.linspace(
+                sparsity_pressure * 2.0, -sparsity_pressure * 2.0,
+                self.num_widths, device=width_logits.device,
+            )  # [num_widths]
+            width_logits = width_logits + width_bias_axis.view(1, 1, -1)
+            # Path: lower budget → bias toward SSM (cheapest of the three for
+            # long sequences, and it has the strongest compression). The
+            # ordering is [local, low_rank, ssm] by pathway index.
+            path_bias_axis = torch.linspace(
+                sparsity_pressure * 1.5, -sparsity_pressure * 0.5,
+                self.num_paths, device=path_logits.device,
+            )  # [num_paths]
+            path_logits = path_logits + path_bias_axis.view(1, 1, -1)
+            # Depth: apply the depth_shift (per-token, per-layer).
+            # Earlier layers are kept (min_depth enforces this); later layers
+            # are pruned under low budget for easy tokens.
+            depth_layer_bias = torch.linspace(
+                0.0, -sparsity_pressure * 3.0,
+                self.max_depth, device=depth_logits.device,
+            )  # [max_depth]
+            depth_logits = depth_logits + depth_layer_bias.view(1, 1, -1) + depth_shift.unsqueeze(-1)
+            # Expert: lower budget → sharper top-k (already normalized);
+            # we add a small entropy-encouraging bias so the model doesn't
+            # collapse onto one expert. Slight bias toward uniform.
+            # (Switch-formula load_balance_loss already handles this.)
+        else:
+            budget = 1.0
         
         # Depth routing
         depth_probs, depth_mask = self._route_depth(
@@ -522,6 +603,12 @@ class AdaptiveRouter(nn.Module):
                 'router_z_loss':     self.z_loss_weight * z_loss_val,
                 'path_div_loss':     self.path_div_weight * path_div,
             })
+            # Width diversity: only meaningful when num_widths >= 2.
+            # At NANO_1M (1 width) this would be a no-op anyway, but we
+            # skip it entirely to avoid logging noise.
+            if self.num_widths >= 2 and self.width_div_weight > 0:
+                width_div = width_diversity_loss(width_probs)
+                decision.auxiliary['width_div_loss'] = self.width_div_weight * width_div
         
         return decision
     

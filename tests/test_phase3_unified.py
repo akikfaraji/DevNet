@@ -141,46 +141,13 @@ def test_budget_adherence_loss_zero_at_target():
 
 
 # ============================================================
-# Part 3: Adaptive halting
+# Part 3: Adaptive halting — REMOVED in v0.4
+# The standalone adaptive_halting.py module was dead code (not wired
+# into zeroModel) and overlapped conceptually with AdaptiveRouter's
+# per-layer depth routing. Removed to simplify the architecture.
+# Cost-aware depth modulation now lives in AdaptiveRouter.forward()
+# (see config.cost_aware_routing).
 # ============================================================
-
-def test_adaptive_halting_module():
-    """AdaptiveHalting should produce per-token halt decisions."""
-    from xorzen.model.components.adaptive_halting import AdaptiveHalting
-    B, T, H = 2, 8, 16
-    halting = AdaptiveHalting(hidden_dim=H, max_depth=4, halting_threshold=0.9)
-    halting.eval()
-    x = torch.randn(B, T, H)
-    with torch.no_grad():
-        halt_probs, halt_decisions = halting(x, layer_idx=0)
-    assert halt_probs.shape == (B, T, 1)
-    assert halt_decisions.shape == (B, T, 1)
-    assert (halt_probs >= 0).all() and (halt_probs <= 1).all()
-    assert halt_decisions.dtype == torch.bool
-
-
-def test_adaptive_halting_easy_tokens_halt_earlier():
-    """Tokens with low difficulty should halt earlier (higher halt_prob)."""
-    from xorzen.model.components.adaptive_halting import AdaptiveHalting
-    B, T, H = 1, 4, 16
-    halting = AdaptiveHalting(hidden_dim=H, max_depth=4, halting_threshold=0.5, min_depth=0)
-    halting.eval()
-    # First 2 tokens: low difficulty (small norm)
-    # Last 2 tokens: high difficulty (large norm)
-    x = torch.zeros(B, T, H)
-    torch.manual_seed(42)
-    x[0, :2] = torch.randn(1, 2, H) * 0.1  # easy
-    x[0, 2:] = torch.randn(1, 2, H) * 2.0  # hard
-    with torch.no_grad():
-        halt_probs, _ = halting(x, layer_idx=1)
-    # Easy tokens should have higher halt probability (lower difficulty → easier to halt)
-    easy_halt = halt_probs[0, :2].mean().item()
-    hard_halt = halt_probs[0, 2:].mean().item()
-    print(f"easy halt: {easy_halt:.4f}, hard halt: {hard_halt:.4f}")
-    # The relationship may not be perfectly monotonic due to initialization,
-    # but at least the halting module should produce different probs for
-    # different inputs.
-    assert abs(easy_halt - hard_halt) > 1e-6, "halting probs should differ for easy vs hard tokens"
 
 
 if __name__ == "__main__":

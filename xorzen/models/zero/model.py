@@ -606,10 +606,18 @@ class zeroModel(BaseModel):
             routing_loss = routing_loss.mean()
 
         # Expert load balancing
-        load_balance_loss = self._compute_load_balance_loss(
-            expert_indices_flat,
-            expert_weights_flat
-        )
+        # v0.4: unify the double-counting load-balance losses.
+        # v0.3 had TWO: the router's Switch-formula loss (in routing.py) AND
+        # this model-level L2 loss. They double-counted.
+        # With config.unify_load_balance=True (default), only the Switch
+        # formula is used; this L2 term is zeroed. Set False for v0.3 compat.
+        if getattr(self.config, 'unify_load_balance', True):
+            load_balance_loss = torch.tensor(0.0, device=device)
+        else:
+            load_balance_loss = self._compute_load_balance_loss(
+                expert_indices_flat,
+                expert_weights_flat
+            )
         
         # CoT consistency loss zeroed during pre-training
         cot_consistency_loss = torch.tensor(0.0, device=device)
