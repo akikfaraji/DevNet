@@ -1,0 +1,105 @@
+{
+  "results": [
+    {
+      "id": "P1",
+      "claim": "SSM ZOH discretization applies to BOTH A and B (diagonal A).",
+      "location": "xorzen/model/components/ssm_scan.py:discretize_zoh",
+      "status": "PROVEN",
+      "evidence": "A_bar in (0,1), B_bar = 0.3935*B (ZOH factor), not raw B. Taylor fallback for small dt tested separately."
+    },
+    {
+      "id": "P2",
+      "claim": "SSMPathway output applies C exactly once (no double-C bug).",
+      "location": "xorzen/model/components/hass_block.py:SSMPathway.forward",
+      "status": "PROVEN",
+      "evidence": "output shape (1, 8, 16), |y|.mean()=0.1113 > 0.01, finite. Single C multiplication verified by code inspection."
+    },
+    {
+      "id": "P3",
+      "claim": "All three SSM scan implementations agree to <1e-5.",
+      "location": "xorzen/model/components/ssm_scan.py",
+      "status": "PROVEN",
+      "evidence": "||seq - parallel||_inf = 5.96e-08, ||seq - chunked||_inf = 0.00e+00. Parallel scan is real Hillis-Steele O(log T), not a fake label."
+    },
+    {
+      "id": "P4",
+      "claim": "SSM forward is finite for T=4096 (no overflow/underflow).",
+      "location": "xorzen/model/components/hass_block.py:SSMPathway.forward",
+      "status": "PROVEN",
+      "evidence": "T=4096 forward OK, |y|.max()=1.4119, all finite. Chunked scan keeps Python loop count at T/chunk=16, not T=4096."
+    },
+    {
+      "id": "P5",
+      "claim": "load_balance_loss_switch accepts [B,S,E] and [N,E] shapes; perfect balance gives L=1, collapse gives L=E.",
+      "location": "xorzen/model/components/load_balance.py",
+      "status": "PROVEN",
+      "evidence": "3D loss=1.0015, 2D loss=1.0341, perfect=1.0000, collapse=4.0000. Bounds [1, E]=4 hold."
+    },
+    {
+      "id": "P6",
+      "claim": "ExpertShardManager metadata survives save \u2192 reload with int keys.",
+      "location": "xorzen/utils/sharding.py:_load_metadata",
+      "status": "PROVEN",
+      "evidence": "3 experts saved and reloaded; all keys are int, all values are ShardMetadata. Restart no longer raises 'Expert not found'."
+    },
+    {
+      "id": "P7",
+      "claim": "ExpertDiskManager.load_expert does not call .eval() unconditionally.",
+      "location": "xorzen/model/zmoe.py:ExpertDiskManager.load_expert",
+      "status": "PROVEN",
+      "evidence": "Loaded expert's train/eval state follows parent module; .eval() no longer hardcoded in load_expert."
+    },
+    {
+      "id": "P8",
+      "claim": "MoE output is sum_k w_k * E_k(x), NOT a weighted average.",
+      "location": "xorzen/model/zmoe.py:ShardedExpertFabric.forward",
+      "status": "PROVEN",
+      "evidence": "output ratio (w=0.2)/(w=1.0) = 0.2000 (expected ~0.2). No re-normalization by sum(weights)."
+    },
+    {
+      "id": "P9",
+      "claim": "HASSBlock.forward only invokes the top-k pathways per token; unselected pathways are NOT called.",
+      "location": "xorzen/model/components/hass_block.py:HASSBlock.forward + xorzen/model/components/sparse_dispatch.py",
+      "status": "PROVEN",
+      "evidence": "With pathway_top_k=1 and all tokens selecting SSM: local=0, low_rank=0, ssm=1. Unselected pathways NOT called."
+    },
+    {
+      "id": "P10",
+      "claim": "topk_expert_dispatch only calls experts that at least one token selected.",
+      "location": "xorzen/model/components/sparse_dispatch.py:topk_expert_dispatch",
+      "status": "PROVEN",
+      "evidence": "All tokens \u2192 expert 0: expert 0 called once, experts 1-3 NOT called. Genuine top-k sparsity at the execution level."
+    },
+    {
+      "id": "P11",
+      "claim": "SlicedFFN with lower selected width executes fewer FLOPs (proportional to width/max_width).",
+      "location": "xorzen/model/components/sliced_ffn.py:SlicedFFN",
+      "status": "PROVEN",
+      "evidence": "FLOPs width=16: 8192, width=64: 32768 (4x ratio). Per-token width selection works. Outputs differ. Genuine compute reduction via tensor slicing."
+    },
+    {
+      "id": "P12",
+      "claim": "ComputeController with lower compute_budget produces lower actual_compute on average.",
+      "location": "xorzen/model/components/compute_controller.py:ComputeController",
+      "status": "PROVEN",
+      "evidence": "actual_compute: budget=1.0 \u2192 0.2023, budget=0.25 \u2192 0.0629. Lower budget produces less compute."
+    },
+    {
+      "id": "P13",
+      "claim": "AdaptiveHalting.ponder_loss = mean(1 - halt_prob), penalizing NOT halting (encourages early exit). Opposite of the IGRIS bug.",
+      "location": "xorzen/model/components/adaptive_halting.py:AdaptiveHalting.ponder_loss",
+      "status": "PROVEN",
+      "evidence": "ponder_loss(all_halt)=0, ponder_loss(no_halt)=1. Sign is CORRECT: penalizes NOT halting, encourages early exit. (Opposite of the IGRIS bug where loss += 0.01*ponder_cost penalized halting.)"
+    },
+    {
+      "id": "P14",
+      "claim": "LRUCache._evict_one does not call gc.collect() (was a perf killer).",
+      "location": "xorzen/utils/sharding.py:LRUCache._evict_one",
+      "status": "PROVEN",
+      "evidence": "AST analysis confirms no gc.collect() CALLS in _evict_one or clear (comments mentioning gc.collect are allowed for documentation). Refcounting handles tensor deallocation; no per-eviction GC pause."
+    }
+  ],
+  "summary": {
+    "PROVEN": 14
+  }
+}
