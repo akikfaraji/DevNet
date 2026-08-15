@@ -231,8 +231,12 @@ class ComputeController(nn.Module):
         width_logits = self.width_head(features)  # [B, T, num_widths]
         # Lower budget → bias toward smaller widths.
         # width_choices are sorted ascending, so smaller widths have lower index.
+        # Phase 7 BUG FIX: previous linspace was (-sparsity*2, +sparsity*2) which
+        # INCREASED the logit for the LAST (largest) width under low budget —
+        # exactly backwards. Reversed to (+sparsity*2, -sparsity*2) so low budget
+        # boosts the SMALLER widths.
         width_bias = torch.linspace(
-            -sparsity_pressure * 2.0, sparsity_pressure * 2.0,
+            sparsity_pressure * 2.0, -sparsity_pressure * 2.0,
             len(self.width_choices), device=width_logits.device
         )
         width_logits = width_logits + width_bias.unsqueeze(0).unsqueeze(0)

@@ -1,0 +1,91 @@
+{
+  "results": [
+    {
+      "budget": 0.1,
+      "predicted_compute": 0.007085012272000313,
+      "actual_flops": 1693696,
+      "actual_linear_calls": 21,
+      "avg_depth": 0.125,
+      "avg_depth_fraction": 0.041666666666666664,
+      "avg_width_value": 16.0,
+      "avg_width_fraction": 0.5,
+      "avg_width_idx": 0.0,
+      "avg_pathway_count": 2.0,
+      "avg_expert_count": 2.0,
+      "wall_clock_ms": 4.368867999801296,
+      "peak_memory_bytes": 0,
+      "output_finite": true
+    },
+    {
+      "budget": 0.25,
+      "predicted_compute": 0.023760497570037842,
+      "actual_flops": 2306048,
+      "actual_linear_calls": 35,
+      "avg_depth": 0.40625,
+      "avg_depth_fraction": 0.13541666666666666,
+      "avg_width_value": 16.0,
+      "avg_width_fraction": 0.5,
+      "avg_width_idx": 0.0,
+      "avg_pathway_count": 2.0,
+      "avg_expert_count": 2.0,
+      "wall_clock_ms": 6.427366000934853,
+      "peak_memory_bytes": 0,
+      "output_finite": true
+    },
+    {
+      "budget": 0.5,
+      "predicted_compute": 0.08442544937133789,
+      "actual_flops": 4478976,
+      "actual_linear_calls": 35,
+      "avg_depth": 1.3125,
+      "avg_depth_fraction": 0.4375,
+      "avg_width_value": 16.0,
+      "avg_width_fraction": 0.5,
+      "avg_width_idx": 0.0,
+      "avg_pathway_count": 2.0,
+      "avg_expert_count": 2.0,
+      "wall_clock_ms": 5.971470000076806,
+      "peak_memory_bytes": 0,
+      "output_finite": true
+    },
+    {
+      "budget": 0.75,
+      "predicted_compute": 0.14514665305614471,
+      "actual_flops": 6090752,
+      "actual_linear_calls": 35,
+      "avg_depth": 1.96875,
+      "avg_depth_fraction": 0.65625,
+      "avg_width_value": 17.5,
+      "avg_width_fraction": 0.546875,
+      "avg_width_idx": 0.09375,
+      "avg_pathway_count": 2.0,
+      "avg_expert_count": 2.0,
+      "wall_clock_ms": 5.629031998978462,
+      "peak_memory_bytes": 0,
+      "output_finite": true
+    },
+    {
+      "budget": 1.0,
+      "predicted_compute": 0.20325690507888794,
+      "actual_flops": 6936576,
+      "actual_linear_calls": 49,
+      "avg_depth": 2.34375,
+      "avg_depth_fraction": 0.78125,
+      "avg_width_value": 25.0,
+      "avg_width_fraction": 0.78125,
+      "avg_width_idx": 0.5625,
+      "avg_pathway_count": 2.0,
+      "avg_expert_count": 2.0,
+      "wall_clock_ms": 7.625049000125728,
+      "peak_memory_bytes": 0,
+      "output_finite": true
+    }
+  ],
+  "verdicts": {
+    "budget_affects_compute": true,
+    "actual_monotonic_in_budget": true,
+    "predicted_correlates_with_actual": true,
+    "output_finite_at_all_budgets": true
+  },
+  "overall_pass": true
+}
