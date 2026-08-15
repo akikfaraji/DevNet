@@ -1,0 +1,322 @@
+{
+  "results": {
+    "numerical_equivalence": [
+      {
+        "config": {
+          "B": 1,
+          "T": 16,
+          "N": 8,
+          "dtype": "torch.float32"
+        },
+        "seq_max_abs": 0.3738911747932434,
+        "par_abs_err": 2.9802322387695312e-08,
+        "par_rel_err": 7.970854515913656e-08,
+        "par_pass": true,
+        "chunk_abs_err": 0.0,
+        "chunk_rel_err": 0.0,
+        "chunk_pass": true,
+        "abs_tol": 0.0001,
+        "rel_tol": 0.001
+      },
+      {
+        "config": {
+          "B": 1,
+          "T": 32,
+          "N": 8,
+          "dtype": "torch.float32"
+        },
+        "seq_max_abs": 0.40551334619522095,
+        "par_abs_err": 2.9802322387695312e-08,
+        "par_rel_err": 7.349282565516281e-08,
+        "par_pass": true,
+        "chunk_abs_err": 0.0,
+        "chunk_rel_err": 0.0,
+        "chunk_pass": true,
+        "abs_tol": 0.0001,
+        "rel_tol": 0.001
+      },
+      {
+        "config": {
+          "B": 1,
+          "T": 64,
+          "N": 16,
+          "dtype": "torch.float32"
+        },
+        "seq_max_abs": 0.3664221465587616,
+        "par_abs_err": 2.9802322387695312e-08,
+        "par_rel_err": 8.133329782124144e-08,
+        "par_pass": true,
+        "chunk_abs_err": 0.0,
+        "chunk_rel_err": 0.0,
+        "chunk_pass": true,
+        "abs_tol": 0.0001,
+        "rel_tol": 0.001
+      },
+      {
+        "config": {
+          "B": 2,
+          "T": 128,
+          "N": 32,
+          "dtype": "torch.float32"
+        },
+        "seq_max_abs": 0.5556151866912842,
+        "par_abs_err": 5.960464477539063e-08,
+        "par_rel_err": 1.0727684399263953e-07,
+        "par_pass": true,
+        "chunk_abs_err": 0.0,
+        "chunk_rel_err": 0.0,
+        "chunk_pass": true,
+        "abs_tol": 0.0001,
+        "rel_tol": 0.001
+      },
+      {
+        "config": {
+          "B": 1,
+          "T": 256,
+          "N": 16,
+          "dtype": "torch.float32"
+        },
+        "seq_max_abs": 0.4534507393836975,
+        "par_abs_err": 5.960464477539063e-08,
+        "par_rel_err": 1.3144678855730554e-07,
+        "par_pass": true,
+        "chunk_abs_err": 0.0,
+        "chunk_rel_err": 0.0,
+        "chunk_pass": true,
+        "abs_tol": 0.0001,
+        "rel_tol": 0.001
+      },
+      {
+        "config": {
+          "B": 1,
+          "T": 1023,
+          "N": 8,
+          "dtype": "torch.float32"
+        },
+        "seq_max_abs": 0.5502002239227295,
+        "par_abs_err": 5.960464477539063e-08,
+        "par_rel_err": 1.083326416465347e-07,
+        "par_pass": true,
+        "chunk_abs_err": 0.0,
+        "chunk_rel_err": 0.0,
+        "chunk_pass": true,
+        "abs_tol": 0.0001,
+        "rel_tol": 0.001
+      },
+      {
+        "config": {
+          "B": 1,
+          "T": 16,
+          "N": 8,
+          "dtype": "torch.bfloat16"
+        },
+        "seq_max_abs": 0.37109375,
+        "par_abs_err": 0.001953125,
+        "par_rel_err": 0.0052631577529085915,
+        "par_pass": true,
+        "chunk_abs_err": 0.0,
+        "chunk_rel_err": 0.0,
+        "chunk_pass": true,
+        "abs_tol": 0.01,
+        "rel_tol": 0.05
+      },
+      {
+        "config": {
+          "B": 1,
+          "T": 64,
+          "N": 16,
+          "dtype": "torch.bfloat16"
+        },
+        "seq_max_abs": 0.3671875,
+        "par_abs_err": 0.001953125,
+        "par_rel_err": 0.005319148791308288,
+        "par_pass": true,
+        "chunk_abs_err": 0.0,
+        "chunk_rel_err": 0.0,
+        "chunk_pass": true,
+        "abs_tol": 0.01,
+        "rel_tol": 0.05
+      }
+    ],
+    "gradient_equivalence": {
+      "config": {
+        "B": 2,
+        "T": 64,
+        "N": 8,
+        "dtype": "float32"
+      },
+      "fwd_par_err": 3.3527612686157227e-08,
+      "fwd_ch_err": 0.0,
+      "grad_A_par_err": 1.1920928955078125e-07,
+      "grad_A_ch_err": 0.0,
+      "grad_B_par_err": 4.76837158203125e-07,
+      "grad_B_ch_err": 0.0,
+      "abs_tol": 0.001
+    },
+    "long_sequence_stability": [
+      {
+        "T": 1024,
+        "state_max": 0.6645429134368896,
+        "state_mean": 0.09593292325735092,
+        "has_nan": false,
+        "has_inf": false,
+        "forward_finite": true,
+        "grad_A_max": 1.5228341817855835,
+        "grad_B_max": 5.557826995849609,
+        "grad_finite": true,
+        "wall_clock_s": 0.0058532409984763945
+      },
+      {
+        "T": 4096,
+        "state_max": 0.7259811758995056,
+        "state_mean": 0.0962543860077858,
+        "has_nan": false,
+        "has_inf": false,
+        "forward_finite": true,
+        "grad_A_max": 2.0305211544036865,
+        "grad_B_max": 5.605733394622803,
+        "grad_finite": true,
+        "wall_clock_s": 0.02426317199933692
+      },
+      {
+        "T": 16384,
+        "state_max": 0.6265056133270264,
+        "state_mean": 0.09580135345458984,
+        "has_nan": false,
+        "has_inf": false,
+        "forward_finite": true,
+        "grad_A_max": 2.489840507507324,
+        "grad_B_max": 5.8934245109558105,
+        "grad_finite": true,
+        "wall_clock_s": 0.11079758000050788
+      }
+    ],
+    "complexity_analysis": {
+      "theoretical": {
+        "sequential_scan": {
+          "work": "O(T * N)",
+          "parallel_depth": "O(T)",
+          "memory": "O(T * N)",
+          "description": "Python loop over T, vectorized over B and N. T sequential iterations."
+        },
+        "parallel_scan": {
+          "work": "O(T * log(T) * N)",
+          "parallel_depth": "O(log T)",
+          "memory": "O(T * log(T) * N)",
+          "description": "Hillis-Steele inclusive scan. log2(T) iterations, each touches all T elements."
+        },
+        "chunked_scan": {
+          "work": "O(T * N)",
+          "parallel_depth": "O(T / chunk_size + chunk_size)",
+          "memory": "O(chunk_size * N)",
+          "description": "Hybrid: T/chunk_size Python iterations, each runs sequential_scan on a chunk of size chunk_size (default 256)."
+        }
+      },
+      "timings_ms": {
+        "sequential": [
+          [
+            64,
+            0.4013940003157283
+          ],
+          [
+            128,
+            0.7684703335447315
+          ],
+          [
+            256,
+            1.5167483331121427
+          ],
+          [
+            512,
+            2.91126333346862
+          ],
+          [
+            1024,
+            6.4134266667679185
+          ],
+          [
+            2048,
+            36.36680733325193
+          ]
+        ],
+        "parallel": [
+          [
+            64,
+            0.16324300001239558
+          ],
+          [
+            128,
+            0.20761900001768177
+          ],
+          [
+            256,
+            0.3112009999313159
+          ],
+          [
+            512,
+            0.5210416669190939
+          ],
+          [
+            1024,
+            1.0610976666309095
+          ],
+          [
+            2048,
+            1.5166363330839279
+          ]
+        ],
+        "chunked": [
+          [
+            64,
+            0.38470133343556273
+          ],
+          [
+            128,
+            0.7564256666228175
+          ],
+          [
+            256,
+            1.4264466663007624
+          ],
+          [
+            512,
+            3.047460666493862
+          ],
+          [
+            1024,
+            6.0264836665737676
+          ],
+          [
+            2048,
+            12.293852000463326
+          ]
+        ]
+      }
+    }
+  },
+  "verdicts": {
+    "numerical_equivalence": {
+      "all_pass": true
+    },
+    "gradient_equivalence": {
+      "fwd_par_match": true,
+      "fwd_ch_match": true,
+      "grad_A_par_match": true,
+      "grad_A_ch_match": true,
+      "grad_B_par_match": true,
+      "grad_B_ch_match": true,
+      "all_pass": true
+    },
+    "long_sequence_stability": {
+      "all_pass": true
+    },
+    "complexity_analysis": {
+      "chunked_faster_than_seq_at_T2048": true,
+      "parallel_O_TlogT_work_documented": true,
+      "sequential_O_T_work_documented": true,
+      "chunked_T_over_chunk_iterations": true,
+      "all_pass": true
+    }
+  },
+  "overall_pass": true
+}
