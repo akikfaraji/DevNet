@@ -145,23 +145,34 @@ def sparse_pathway_dispatch(
     combined_flat = torch.zeros(B * T, H, device=device, dtype=x.dtype)
     call_counts: Dict[str, int] = {k: 0 for k in pathway_keys}
 
+    # v0.5 optimization: avoid `int(selected.sum().item())` per pathway —
+    # `.item()` forces a CPU↗ sync. Use `selected.any()` (no sync) and let
+    # the forward run on an empty slice only if needed (it won't, because
+    # we skip on `not selected.any()`). Also use index_add_ for the scatter
+    # instead of boolean-index in-place add (`combined_flat[selected] += ...`),
+    # which is measurably faster on CPU (no intermediate mask allocation).
     for i, key in enumerate(pathway_keys):
-        # Which tokens selected this pathway?
+        # Which tokens selected this pathway? (bool mask, no sync)
         selected = mask_flat[:, i] > 0.5  # [B*T] bool
-        n_selected = int(selected.sum().item())
-        if n_selected == 0:
+        # `selected.any()` returns a 0-dim tensor; `if tensor` works without
+        # a CPU sync because PyTorch defines __bool__ on 0-dim tensors via
+        # a fast local check (still does .item() under the hood, but only
+        # for ONE element, not the whole sum).
+        if not selected.any():
             # This pathway is completely skipped — the sparsity win.
             continue
+        # Integer indices for index_add_ (faster than boolean scatter)
+        idx = selected.nonzero(as_tuple=False).squeeze(-1)  # [n_selected]
         # Forward only on the selected tokens
-        x_slice = x_flat[selected]  # [n_selected, H]
+        x_slice = x_flat[idx]  # [n_selected, H]
         if extra_args and key in extra_args:
             y_slice = pathway_fns[key](x_slice, *extra_args[key])
         else:
             y_slice = pathway_fns[key](x_slice)
         call_counts[key] = 1
-        # Weight and scatter back
-        w_slice = w_flat[selected, i].unsqueeze(-1)  # [n_selected, 1]
-        combined_flat[selected] += y_slice * w_slice
+        # Weight and scatter back via index_add_ (vectorized, no boolean mask)
+        w_slice = w_flat[idx, i].unsqueeze(-1)  # [n_selected, 1]
+        combined_flat.index_add_(0, idx, y_slice * w_slice)
 
     combined = combined_flat.reshape(B, T, H)
 

@@ -879,6 +879,46 @@ class HASSBlock(nn.Module):
         # v0.5: pathway_gate removed (was dead code).
         # Per-pathway modules initialize their own weights.
         pass
+
+    def _get_wrapped_pathway_fns(self):
+        """
+        Return cached wrapped pathway forward functions for sparse dispatch.
+
+        v0.5 optimization: the previous implementation created 3 closures
+        (pathway_fns) + 3 wrapper closures (_wrap) on EVERY forward call
+        for EVERY block. That's 6 × num_layers closures per forward.
+
+        This method builds them once and caches on the instance. The
+        wrapped functions accept a 2D slice [n, H] (output of
+        sparse_pathway_dispatch's slicing), reshape to [1, n, H] for the
+        pathway forward (which expects 3D), then squeeze back to [n, H].
+        """
+        if not hasattr(self, '_cached_wrapped_fns'):
+            # Local pathway takes (x, attention_mask, position_bias) but the
+            # sparse-dispatch path can't slice attention_mask per-token, so
+            # we pass (None, None) — local attention uses its causal mask only.
+            # This is the same behavior as v0.4 (documented limitation).
+            def _wrap_local(x_slice):
+                x3d = x_slice.unsqueeze(0)
+                y3d = self.pathways['local'](x3d, None, None)
+                return y3d.squeeze(0)
+
+            def _wrap_low_rank(x_slice):
+                x3d = x_slice.unsqueeze(0)
+                y3d = self.pathways['low_rank'](x3d)
+                return y3d.squeeze(0)
+
+            def _wrap_ssm(x_slice):
+                x3d = x_slice.unsqueeze(0)
+                y3d = self.pathways['ssm'].forward_parallel(x3d)
+                return y3d.squeeze(0)
+
+            self._cached_wrapped_fns = {
+                'local':    _wrap_local,
+                'low_rank': _wrap_low_rank,
+                'ssm':      _wrap_ssm,
+            }
+        return self._cached_wrapped_fns
     
     def forward(
         self,
@@ -980,51 +1020,12 @@ class HASSBlock(nn.Module):
                     self._pathway_call_counter['low_rank'] = self._pathway_call_counter.get('low_rank', 0) + 1
                     self._pathway_call_counter['ssm'] = self._pathway_call_counter.get('ssm', 0) + 1
             else:
-                # Top-k sparse dispatch.
-                # We need per-pathway forward functions that accept a sliced
-                # tensor [n, H] and return [n, H]. The local pathway takes
-                # extra args (attention_mask, position_bias); but those are
-                # batch-level so we can't easily slice them per-token. To keep
-                # the dispatch correct, we pass the FULL x_attn to local
-                # attention (it is the only pathway with mask args) but only
-                # for the tokens that selected it. We do this by slicing the
-                # input and padding the attention_mask.
-                #
-                # For simplicity and correctness, we use the
-                # ``sparse_pathway_dispatch`` helper which handles the
-                # token-level dispatch. The local pathway's extra args are
-                # handled by wrapping it in a closure.
-                extra_args = {}
-                local_extra = ()
-                if attention_mask is not None:
-                    # Local attention uses attention_mask of shape [B, T] or [B, T, T].
-                    # For per-token slicing we'd need to slice this too; for now,
-                    # pass None (the local pathway will use its causal mask only).
-                    # This is a known limitation when sparsifying the local pathway.
-                    local_extra = (None, position_bias)
-                extra_args['local'] = local_extra
+                # Top-k sparse dispatch (v0.5 optimized).
+                # Pre-create the wrapped pathway functions as bound methods
+                # on first call, then cache them. Avoids per-call closure
+                # creation (3 closures × every forward × every block).
+                wrapped_fns = self._get_wrapped_pathway_fns()
 
-                pathway_fns = {
-                    'local':    lambda x_in, *a: self.pathways['local'](x_in, *(a if a else (None, None))),
-                    'low_rank': lambda x_in, *a: self.pathways['low_rank'](x_in),
-                    'ssm':      lambda x_in, *a: self.pathways['ssm'].forward_parallel(x_in),
-                }
-                # sparse_pathway_dispatch expects x as [B, T, H] and slices
-                # it internally. But the local/low_rank/ssm pathways all
-                # expect [B', T', H] (3D). So we need to reshape the slice
-                # [n, H] back to [1, n, H] before calling each pathway,
-                # then flatten the output back to [n, H].
-                def _wrap(fn):
-                    def wrapped(x_slice):
-                        # x_slice: [n, H] -> [1, n, H] -> fn -> [1, n, H] -> [n, H]
-                        x3d = x_slice.unsqueeze(0)
-                        y3d = fn(x3d)
-                        return y3d.squeeze(0)
-                    return wrapped
-
-                wrapped_fns = {k: _wrap(fn) for k, fn in pathway_fns.items()}
-                # sparse_pathway_dispatch doesn't take extra_args in this shape;
-                # rewrite to use wrapped_fns which ignore extra args.
                 combined_flat, call_counts = sparse_pathway_dispatch(
                     x_attn,
                     path_probs,
