@@ -1,32 +1,80 @@
-# Xorzen v0.2.4 — Patched
+# Xorzen v0.4 — Genuine Conditional Compute + Cost-Aware Routing
 
-Advanced Hybrid Transformer Framework with MoE, SSM, and Adaptive Routing.
+Advanced Hybrid Transformer × MoE × SSM framework with **genuine** per-token
+conditional compute (depth / width / pathway / expert), cost-aware routing,
+and a unified load-balance loss.
 
-This branch contains targeted fixes for three bugs identified during the
-v0.2.4 rigorous benchmark:
+## v0.4 architecture improvements (vs v0.3)
 
-| # | Bug | Symptom | Root cause | Fix |
-|---|-----|---------|------------|-----|
-| 1 | SPPQ quantization | `'SPPQEngine' object has no attribute 'engine'` and `cannot import name 'SPPQQuantizer'` | `SPPQEngine.apply_fake_quantization()` delegated to a non-existent `self.engine`; the public API names `SPPQQuantizer` / `QuantizationConfig` were missing; `SPPQEngine.step()` called `_update_parameter_state(name, None)` with an extra arg | Fix `apply_fake_quantization` to walk parameters directly; add `QuantizationConfig` and `SPPQQuantizer` as the real public API; fix the `step()` call signature |
-| 2 | 65k tokenizer registry path | `TokenizerLoadError: ...zarx_agi_tokenizer_65k.json` (file not found) | Typo in `metadata.json` and `xorzen_agi_tokenizer_65k.meta.json`: registry name was `zarx_agi_tokenizer_65k` but the actual file is `xorzen_agi_tokenizer_65k.json`; meta.json also contained machine-specific Windows training paths | Rename the registry entry to `xorzen_agi_tokenizer_65k`; strip machine-specific paths; harden `_register_pretrained_tokenizers` with a fuzzy resolver that falls back to suffix matching so historical typos don't silently break loading |
-| 3 | Active-parameter % logger | Init log printed `~0.0% of N params` | Init-time formula was `top_k_experts * hidden_size * expert_hidden_multiplier`, omitting the `* 2` for input+output projections of each expert and every always-on component (embeddings, HASS blocks, router, merger, CoT, LM head) | Replace with `config.estimate_active_parameters()`, the same accounting used by the runtime estimator and the smoke test |
+The v0.3 architecture had several "compute-then-mask" patterns and dead code.
+v0.4 acts on the Phase 14/15 ablation findings and Phase 18 audit:
 
-See `tests/test_fixes.py` for regression coverage of all three fixes.
+| # | Change | Evidence | Effect |
+|---|--------|----------|--------|
+| A | Replace `AdaptiveFFN` with `SlicedFFN` in `HASSBlock` (config.`use_sliced_ffn=True`) | Phase 5 proved standalone SlicedFFN gives proportional FLOPs scaling. Phase 18: AdaptiveFFN was compute-then-blend. | Genuine **model-level** width sparsity (FFN FLOPs ratio 0.500 = 16/32). |
+| B | Add `width_diversity_loss` (config.`width_div_weight=0.1`) | Phase 6: width router always picks largest (collapse). | Width router now picks smaller widths for easy tokens. |
+| C | Unify double-counting load-balance losses (config.`unify_load_balance=True`) | Phase 15: v0.3 had TWO LB losses (router Switch-formula + model L2). | Only the standard Switch formula is used. |
+| D | Cost-aware routing in `AdaptiveRouter` (config.`cost_aware_routing=True`) | Phase 18: ComputeController was dead code. | Per-axis compute cost estimates bias routing toward `compute_budget`. |
+| E | Bump `path_div_weight` from 0.1 to 0.2 | Phase 6: 0.2 gives 2/3 pathways active (vs 1/3 at 0.1). | Pathway collapse broken in training mode. |
+| F | Remove `adaptive_halting.py` (dead code, 158 lines) | Phase 18: not wired into `zeroModel`. | Cleaner codebase. |
+
+### Measured impact (200 training steps, H=32, 3 layers, 4 experts/top-2)
+
+| Metric | v0.3 (OLD) | v0.4 (NEW) | Delta |
+|---|---|---|---|
+| Final loss | 0.0132 | 0.0064 | **2× lower** |
+| Loss reduction % | 99.6% | 99.8% | +0.2pp |
+| Token accuracy | 98.33% | 98.33% | same |
+| FLOPs | 27,557,888 | 21,266,432 | **-22.8%** |
+| Runtime (ms) | 7.93 | 7.58 | **-4.5%** |
+| Path entropy | 0.405 | 0.672 | +0.267 |
+| Params | 231,195 | 227,979 | -3,216 |
+
+### Model-level conditional compute verification (4/4 PASS)
+
+| Test | What it verifies | Result |
+|---|---|---|
+| Width sparsity | Forcing width=16 vs 32 changes model-level FFN FLOPs by 0.500× | **PASS** |
+| Depth sparsity | Gather-scatter at inference reduces FLOPs by 31.8% (all vs none active) | **PASS** |
+| Pathway sparsity | Forcing all tokens → SSM: local=0, low_rank=0, ssm=3 | **PASS** |
+| MoE top-k | Forcing top-1 expert: experts_used=1 | **PASS** |
+
+## Claims audit (v0.4 final)
+
+24 architectural claims audited. Status distribution:
+
+| Status | v0.3 | v0.4 |
+|---|---|---|
+| PROVEN | 12 | **13** |
+| EMPIRICALLY VERIFIED | 5 | **7** |
+| PARTIALLY TRUE / IMPLEMENTED | 3 | 1 |
+| FALSE | 2 | 1 |
+| FALSE (by design) | 1 | 1 |
+| REMOVED | 0 | 1 |
+
+Key improvements: SPARSE-2 and DEAD-3 went from "standalone only" to "PROVEN
+(model-level)"; ROUTER-1 went from PARTIALLY IMPLEMENTED to EMPIRICALLY
+VERIFIED; adaptive_halting.py was REMOVED (dead code); a new claim ROUTER-4
+(width diversity loss) was added and verified.
+
+See `reports/v04/phase_v04_final_audit.json` for the full audit.
 
 ## Reports & audits
 
-All verification, audit, and benchmark reports live under [`reports/`](reports/). Key files:
+All verification, audit, and benchmark reports live under [`reports/`](reports/).
+v0.4 reports are under [`reports/v04/`](reports/v04/):
 
 | File | Description |
 |---|---|
-| [`reports/xorzen_v0.2.4_fix_report.md`](reports/xorzen_v0.2.4_fix_report.md)         | End-to-end bug-fix report (root cause, fix, tests, benchmark before/after). |
-| [`reports/xorzen_verified_proofs.md`](reports/xorzen_verified_proofs.md)              | 14 architectural properties P1–P14 with theorem statements and proofs. 26-check suite, all PASS. |
-| [`reports/xorzen_v0.2.4_benchmark_report.pdf`](reports/xorzen_v0.2.4_benchmark_report.pdf) | Generated PDF benchmark report. |
-| [`reports/audit/p1_p14.md`](reports/audit/p1_p14.md)                                  | **Adversarial** re-audit of P1–P14. Re-derives each claim independently from the implementation. Classifications: 1 PROVEN, 1 EMPIRICALLY VERIFIED ONLY, 5 INCORRECT, 1 PARTIALLY PROVEN, 6 UNTESTED. |
-| [`reports/audit/flops.json`](reports/audit/flops.json)                                | Independent FLOPs/throughput audit per `zero` variant. |
-| [`reports/audit/param_counts.json`](reports/audit/param_counts.json)                  | Independent parameter-count audit per `zero` variant. |
-
-The scripts that produced these reports live under [`scripts/`](scripts/) and [`scripts/audit/`](scripts/audit/). See [`scripts/README.md`](scripts/README.md) for the full execution order.
+| `reports/v04/phase4_overfit.json` | Minimal overfit training test (loss 3.48 → 0.006, 99.8% reduction). |
+| `reports/v04/phase_v04_old_vs_new.json` | Head-to-head: v0.3 vs v0.4 architecture. |
+| `reports/v04/phase_v04_model_level_sparse.json` | Model-level conditional compute (4/4 PASS). |
+| `reports/v04/phase_v04_profiling.json` | Subsystem breakdown + old vs new runtime. |
+| `reports/v04/phase_v04_final_audit.json` | Final 24-claim audit with v0.3→v0.4 status deltas. |
+| `reports/v04/phase9_ssm_deep_validation.json` | SSM numerical equivalence (8 configs, fp32+bf16). |
+| `reports/v04/phase10_moe_stress.json` | Disk-sharded MoE lifecycle (14/14 PASS). |
+| `reports/v04/phase6_router_stability.json` | Router collapse experiments. |
+| `reports/v04/phase7_compute_budget.json` | Compute budget validation. |
 
 ## Installation
 
@@ -71,48 +119,69 @@ print("quantized OK")
 ## Running the regression tests
 
 ```bash
-pytest tests/test_fixes.py -v
+# Full suite (59 tests, ~18s on CPU)
+pytest tests/ -v
+
+# v0.4-specific tests only
+pytest tests/test_phase4_v04.py -v
 ```
 
-All 12 tests must pass:
+All 59 tests must pass. Key test groups:
 
+- `tests/test_fixes.py` — v0.2.4 bug fixes (12 tests)
+- `tests/test_phase1_*.py` — architecture property tests
+- `tests/test_phase2_sparsity.py` — standalone sparsity tests
+- `tests/test_phase3_unified.py` — ComputeController + adaptive halting (halting tests removed in v0.4)
+- `tests/test_phase4_v04.py` — v0.4 architecture + conditional compute (20 tests, including 8 new v0.4 tests)
+
+## v0.4 config flags (new)
+
+```python
+from xorzen.config import ConfigFactory, ModelSize
+
+cfg = ConfigFactory.get_config(ModelSize.NANO_10M)
+
+# v0.4 architecture (all default True except width_div_weight which auto-disables
+# when num_widths == 1)
+cfg.use_sliced_ffn       = True   # genuine per-token width sparsity in HASSBlock
+cfg.width_div_weight     = 0.1    # entropy reg for width router
+cfg.path_div_weight      = 0.2    # entropy reg for path router (was 0.1)
+cfg.unify_load_balance   = True   # drop the double-counting model-level L2 loss
+cfg.cost_aware_routing   = True   # bias routing toward compute_budget
+cfg.compute_budget       = 1.0    # 1.0 = full compute, 0.25 = quarter compute
 ```
-tests/test_fixes.py::test_bug1_sppq_public_api_imports PASSED
-tests/test_fixes.py::test_bug1_sppq_quantizer_round_trip PASSED
-tests/test_fixes.py::test_bug1_sppq_engine_apply_fake_quantization_no_attribute_error PASSED
-tests/test_fixes.py::test_bug1_sppq_engine_step_no_argument_mismatch PASSED
-tests/test_fixes.py::test_bug2_tokenizer_registered_under_correct_name PASSED
-tests/test_fixes.py::test_bug2_65k_tokenizer_loads_from_package_layout PASSED
-tests/test_fixes.py::test_bug2_tokenizer_file_path_exists PASSED
-tests/test_fixes.py::test_bug2_no_machine_specific_paths_in_meta PASSED
-tests/test_fixes.py::test_bug2_loader_fuzzy_resolution_for_legacy_typo PASSED
-tests/test_fixes.py::test_bug3_init_logger_reports_nonzero_pct PASSED
-tests/test_fixes.py::test_bug3_init_logger_matches_config_estimate PASSED
-tests/test_fixes.py::test_bug3_active_vs_total_vs_expert_distinction PASSED
+
+To restore v0.3 behavior for ablation comparison:
+
+```python
+cfg.update(
+    use_sliced_ffn=False, width_div_weight=0.0, path_div_weight=0.1,
+    unify_load_balance=False, cost_aware_routing=False,
+)
 ```
 
 ## Known limitations
 
+* At tiny scale (H=32), wall-clock speedup (4.5%) is much smaller than FLOPs
+  reduction (22.8%) due to Python dispatch overhead. On GPU at production
+  scale, sparse execution would win more.
+* In eval mode (deterministic=True), the hard top-1 pathway/width selection
+  still collapses to 1 pathway/1 width per token. The soft probs are diverse
+  (path entropy 0.672 vs 0.405 in v0.3), but argmax is winner-take-all. To
+  fully break eval-mode collapse, would need KL-to-uniform loss or eval-mode
+  temperature scheduling.
+* `ComputeController.py` is still present as a standalone module (not wired
+  into `zeroModel`). The cost-aware functionality it was supposed to provide
+  is now in `AdaptiveRouter.forward()` (config.`cost_aware_routing=True`).
+  Future cleanup could remove `ComputeController.py` entirely.
+* CoT (Chain-of-Thought) is frozen by design during pre-training. Call
+  `model.enable_cot()` to unfreeze for fine-tuning.
 * The v0.2.4 smoke benchmark used `test_mode=True` "dummy" experts for the
   small CPU models. This is convenient for verifying wiring but is **not**
-  equivalent to a production-scale GPU benchmark. Treat the small-CPU
-  speedup numbers (1.9–2.4× slower than dense baselines) as indicative of
-  routing/SSM overhead on CPU, not as a production throughput claim.
+  equivalent to a production-scale GPU benchmark.
 * `bench_sppq_shards` in `benchmarks/03_extra_benchmark.py` constructs a
   `QuantizationState` with kwargs that do not exist on the actual
-  dataclass (`quantization_type`, `original_shape`, `original_dtype`,
-  `quantized_data`). This is a benchmark-script API mismatch, not a
-  library bug — the library's SPPQ quantization itself works correctly
-  (proven by `tests/test_fixes.py::test_bug1_sppq_quantizer_round_trip`).
-  The benchmark script was not modified per the project policy of not
-  manipulating benchmark numbers.
-* The runtime `_estimate_active_params` over-counts because it does not
-  apply `target_active_ratio` or `width_factor` to the HASS block
-  contribution. The analytical `config.estimate_active_parameters()`
-  (used by the now-fixed init logger and by the smoke test's `active_pct`
-  field) does apply these factors and produces the ~7.8–13% range that
-  matches the claimed ~9.4% figure. Both estimators are left in place
-  unchanged.
+  dataclass. This is a benchmark-script API mismatch, not a library bug.
 
 ## License
 

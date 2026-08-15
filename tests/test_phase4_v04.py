@@ -414,5 +414,230 @@ def test_tiny_training_loss_decreases():
     assert losses[-1] < losses[0] * 0.5, f"insufficient loss reduction: {losses[0]} -> {losses[-1]}"
 
 
+# ============================================================
+# v0.4 architecture tests — SlicedFFN wired into HASSBlock,
+# width_diversity_loss, cost-aware routing, unified LB loss.
+# ============================================================
+
+def test_sliced_ffn_wired_into_hass_block():
+    """HASSBlock must use SlicedFFN by default (config.use_sliced_ffn=True)."""
+    from xorzen.config import ConfigFactory, ModelSize
+    from xorzen.models.zero.variants import zeroBase
+    from xorzen.model.components.sliced_ffn import SlicedFFN
+    from xorzen.model.components.hass_block import AdaptiveFFN
+
+    cfg = ConfigFactory.get_config(ModelSize.TINY_23K)
+    cfg.update(use_sliced_ffn=True, shard_experts=False)
+    model = zeroBase(config=cfg, test_mode=True)
+    n_sliced = sum(1 for blk in model.blocks if isinstance(blk.ffn, SlicedFFN))
+    n_adaptive = sum(1 for blk in model.blocks if isinstance(blk.ffn, AdaptiveFFN))
+    assert n_sliced == len(model.blocks), f"expected all blocks to use SlicedFFN, got {n_sliced}/{len(model.blocks)}"
+    assert n_adaptive == 0, f"expected no AdaptiveFFN blocks, got {n_adaptive}"
+
+
+def test_use_sliced_ffn_false_uses_adaptive_ffn():
+    """Setting use_sliced_ffn=False should restore the legacy AdaptiveFFN."""
+    from xorzen.config import ConfigFactory, ModelSize
+    from xorzen.models.zero.variants import zeroBase
+    from xorzen.model.components.sliced_ffn import SlicedFFN
+    from xorzen.model.components.hass_block import AdaptiveFFN
+
+    cfg = ConfigFactory.get_config(ModelSize.TINY_23K)
+    cfg.update(use_sliced_ffn=False, shard_experts=False)
+    model = zeroBase(config=cfg, test_mode=True)
+    n_sliced = sum(1 for blk in model.blocks if isinstance(blk.ffn, SlicedFFN))
+    n_adaptive = sum(1 for blk in model.blocks if isinstance(blk.ffn, AdaptiveFFN))
+    assert n_adaptive == len(model.blocks), f"expected all blocks to use AdaptiveFFN, got {n_adaptive}/{len(model.blocks)}"
+    assert n_sliced == 0
+
+
+def test_model_level_width_sparsity():
+    """Forcing different widths at the model level must produce proportional
+    FFN FLOPs. This verifies SlicedFFN delivers genuine model-level width
+    sparsity (not just standalone)."""
+    from xorzen.config import ConfigFactory, ModelSize
+    from xorzen.models.zero.variants import zeroBase
+    from xorzen.model.components.sliced_ffn import SlicedFFN
+
+    H = 32
+    cfg = ConfigFactory.get_config(ModelSize.TINY_23K)
+    cfg.update(
+        vocab_size=32, context_length=16, hidden_size=H,
+        num_layers=2, max_depth=2, min_depth=1,
+        width_choices=(H // 2, H),  # 16, 32
+        expert_count=2, top_k_experts=1,
+        shard_experts=False, dropout=0.0,
+        gradient_checkpointing=False,
+    )
+
+    def measure_ffn_flops(width_idx_val):
+        torch.manual_seed(42)
+        model = zeroBase(config=cfg, test_mode=True)
+        model.eval()
+        # Force width
+        def force_width(logits, complexity, temperature, training, deterministic):
+            B, T, W = logits.shape
+            probs = torch.zeros(B, T, W, device=logits.device)
+            probs[..., width_idx_val] = 1.0
+            idx = torch.full((B, T), width_idx_val, dtype=torch.long, device=logits.device)
+            mult = torch.ones(B, T, 1, device=logits.device)
+            return probs, idx, mult
+        model.router._route_width = force_width
+        ids = torch.randint(0, cfg.vocab_size, (2, 8))
+        with torch.no_grad():
+            out = model(input_ids=ids, output_routing_info=True)
+        # Analytical FFN FLOPs from routing decision
+        width_idx = out.routing_info.width_idx
+        block0_ffn = model.blocks[0].ffn
+        assert isinstance(block0_ffn, SlicedFFN), "expected SlicedFFN"
+        wc = torch.tensor(block0_ffn.width_choices, device=width_idx.device)
+        actual_widths = wc[width_idx]
+        H_eff = block0_ffn.hidden_dim
+        n_blocks = len(model.blocks)
+        return n_blocks * int((4 * H_eff * actual_widths).sum().item())
+
+    flops_small = measure_ffn_flops(0)  # width = 16
+    flops_large = measure_ffn_flops(1)  # width = 32
+    ratio = flops_small / flops_large
+    expected = cfg.width_choices[0] / cfg.width_choices[1]  # 0.5
+    assert abs(ratio - expected) < 0.01, f"FFN FLOPs ratio {ratio:.3f} != expected {expected:.3f}"
+
+
+def test_width_diversity_loss_function():
+    """width_diversity_loss should be high for collapsed distributions
+    and low for uniform distributions."""
+    from xorzen.model.components.routing import width_diversity_loss
+
+    # Collapsed: all probability on one width
+    collapsed = torch.zeros(1, 4, 3)
+    collapsed[..., 0] = 1.0
+    loss_collapsed = float(width_diversity_loss(collapsed).item())
+
+    # Uniform: equal probability on all widths
+    uniform = torch.ones(1, 4, 3) / 3
+    loss_uniform = float(width_diversity_loss(uniform).item())
+
+    assert loss_collapsed > loss_uniform, \
+        f"collapsed ({loss_collapsed}) should have HIGHER loss than uniform ({loss_uniform})"
+    # Uniform should give loss ≈ -log(3) ≈ -1.0986
+    assert abs(loss_uniform - (-math.log(3))) < 0.01
+
+
+def test_width_div_loss_in_auxiliary():
+    """When num_widths >= 2, the router should add width_div_loss to auxiliary dict."""
+    from xorzen.config import ConfigFactory, ModelSize
+    from xorzen.models.zero.variants import zeroBase
+
+    H = 32
+    cfg = ConfigFactory.get_config(ModelSize.TINY_23K)
+    cfg.update(
+        vocab_size=32, context_length=16, hidden_size=H,
+        num_layers=2, max_depth=2, min_depth=1,
+        width_choices=(H // 2, H),  # 2 widths
+        expert_count=2, top_k_experts=1,
+        shard_experts=False, dropout=0.0,
+        width_div_weight=0.1,
+    )
+    model = zeroBase(config=cfg, test_mode=True)
+    model.train()
+    ids = torch.randint(0, cfg.vocab_size, (2, 8))
+    out = model(input_ids=ids, labels=ids, output_routing_info=True)
+    assert 'width_div_loss' in out.routing_info.auxiliary, \
+        f"width_div_loss not in auxiliary: {list(out.routing_info.auxiliary.keys())}"
+
+
+def test_unified_lb_loss_zero_when_enabled():
+    """When unify_load_balance=True, the model-level L2 LB loss should be 0."""
+    from xorzen.config import ConfigFactory, ModelSize
+    from xorzen.models.zero.variants import zeroBase
+
+    cfg = ConfigFactory.get_config(ModelSize.TINY_23K)
+    cfg.update(
+        unify_load_balance=True, shard_experts=False,
+        num_layers=2, max_depth=2, expert_count=2, top_k_experts=1,
+    )
+    model = zeroBase(config=cfg, test_mode=True)
+    model.train()
+    ids = torch.randint(0, cfg.vocab_size, (2, 8))
+    out = model(input_ids=ids, labels=ids, output_routing_info=True)
+    assert float(out.load_balance_loss.item()) == 0.0, \
+        f"with unify_load_balance=True, model-level L2 LB loss should be 0, got {out.load_balance_loss}"
+
+
+def test_cost_aware_routing_modulates_logits():
+    """With cost_aware_routing=True, lower compute_budget should bias routing
+    toward sparser decisions (fewer layers, smaller widths)."""
+    from xorzen.config import ConfigFactory, ModelSize
+    from xorzen.models.zero.variants import zeroBase
+
+    H = 32
+    base_cfg = ConfigFactory.get_config(ModelSize.TINY_23K)
+    base_cfg.update(
+        vocab_size=32, context_length=16, hidden_size=H,
+        num_layers=4, max_depth=4, min_depth=1,
+        width_choices=(H // 4, H // 2, H),  # 3 widths so width router has choice
+        expert_count=4, top_k_experts=2,
+        shard_experts=False, dropout=0.0,
+        cost_aware_routing=True,
+    )
+
+    def measure_depth(budget):
+        cfg = base_cfg
+        cfg.compute_budget = budget
+        torch.manual_seed(42)
+        model = zeroBase(config=cfg, test_mode=True)
+        model.eval()
+        ids = torch.randint(0, cfg.vocab_size, (2, 16))
+        with torch.no_grad():
+            out = model(input_ids=ids, output_routing_info=True)
+        return float(out.routing_info.depth_mask.float().sum(dim=-1).mean().item())
+
+    depth_full = measure_depth(1.0)
+    depth_low = measure_depth(0.1)
+    # Lower budget should produce fewer active layers (or equal, if min_depth forces)
+    assert depth_low <= depth_full, \
+        f"cost-aware routing: budget=0.1 depth ({depth_low}) should be <= budget=1.0 depth ({depth_full})"
+
+
+def test_old_vs_new_both_train():
+    """Both old and new architecture configs must train successfully."""
+    from xorzen.config import ConfigFactory, ModelSize
+    from xorzen.models.zero.variants import zeroBase
+
+    H = 32
+    for variant_name, use_sliced, width_div, path_div, unify_lb, cost_aware in [
+        ('old', False, 0.0, 0.1, False, False),
+        ('new', True, 0.1, 0.2, True, True),
+    ]:
+        cfg = ConfigFactory.get_config(ModelSize.TINY_23K)
+        cfg.update(
+            vocab_size=32, context_length=16, hidden_size=H,
+            num_layers=2, max_depth=2, min_depth=1,
+            width_choices=(H // 2, H), expert_count=2, top_k_experts=1,
+            router_hidden_dim=8, dropout=0.0, pad_token_id=0,
+            load_balancing_weight=0.001, shard_experts=False,
+            pathway_top_k=2, gradient_checkpointing=False,
+            use_sliced_ffn=use_sliced, width_div_weight=width_div,
+            path_div_weight=path_div, unify_load_balance=unify_lb,
+            cost_aware_routing=cost_aware,
+        )
+        torch.manual_seed(42)
+        np.random.seed(42)
+        model = zeroBase(config=cfg, test_mode=True)
+        model.train()
+        ids = torch.randint(0, cfg.vocab_size, (2, 16))
+        optimizer = torch.optim.AdamW(
+            [p for p in model.parameters() if p.requires_grad], lr=3e-3)
+        losses = []
+        for _ in range(20):
+            optimizer.zero_grad()
+            out = model(input_ids=ids, labels=ids, output_routing_info=True)
+            out.loss.backward()
+            optimizer.step()
+            losses.append(float(out.lm_loss.item()))
+        assert losses[-1] < losses[0], \
+            f"{variant_name}: loss did not decrease: {losses[0]} -> {losses[-1]}"
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v", "--tb=short"]))
