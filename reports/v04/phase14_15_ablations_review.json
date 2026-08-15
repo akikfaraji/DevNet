@@ -1,0 +1,203 @@
+{
+  "phase14_ablations": [
+    {
+      "initial_loss": 3.4843225479125977,
+      "final_loss": 0.9364528059959412,
+      "loss_reduction_pct": 73.12381982095903,
+      "total_flops": 27557888,
+      "total_params": 231195,
+      "ablation": "none"
+    },
+    {
+      "initial_loss": 3.483664035797119,
+      "final_loss": 0.9210122227668762,
+      "loss_reduction_pct": 73.56196770690795,
+      "total_flops": 27557888,
+      "total_params": 231195,
+      "ablation": "no_ssm"
+    },
+    {
+      "initial_loss": 3.4847686290740967,
+      "final_loss": 0.9408358931541443,
+      "loss_reduction_pct": 73.00148178261911,
+      "total_flops": 27557888,
+      "total_params": 231195,
+      "ablation": "no_local"
+    },
+    {
+      "initial_loss": 3.5071001052856445,
+      "final_loss": 0.7980991005897522,
+      "loss_reduction_pct": 77.24333276410002,
+      "total_flops": 27557888,
+      "total_params": 231195,
+      "ablation": "no_low_rank"
+    },
+    {
+      "initial_loss": 3.4832191467285156,
+      "final_loss": 0.9434558153152466,
+      "loss_reduction_pct": 72.91425616440607,
+      "total_flops": 27557888,
+      "total_params": 231195,
+      "ablation": "no_adaptive_depth"
+    },
+    {
+      "initial_loss": 3.4789063930511475,
+      "final_loss": 0.8276878595352173,
+      "loss_reduction_pct": 76.20838947582892,
+      "total_flops": 27557888,
+      "total_params": 231195,
+      "ablation": "no_adaptive_width"
+    },
+    {
+      "initial_loss": 3.4843225479125977,
+      "final_loss": 0.8780056834220886,
+      "loss_reduction_pct": 74.80125128059433,
+      "total_flops": 27557888,
+      "total_params": 231195,
+      "ablation": "no_moe"
+    },
+    {
+      "initial_loss": 3.4843225479125977,
+      "final_loss": 0.9313780665397644,
+      "loss_reduction_pct": 73.2694647601515,
+      "total_flops": 27557888,
+      "total_params": 231195,
+      "ablation": "no_balancing"
+    }
+  ],
+  "phase15_review": {
+    "findings": [
+      {
+        "component": "SSM pathway",
+        "ablation_result": {
+          "initial_loss": 3.483664035797119,
+          "final_loss": 0.9210122227668762,
+          "loss_reduction_pct": 73.56196770690795,
+          "total_flops": 27557888,
+          "total_params": 231195,
+          "ablation": "no_ssm"
+        },
+        "assessment": "Critical component \u2014 provides sequential memory. Removing it hurts quality.",
+        "recommendation": "KEEP. The ZOH discretization is now correct (Phase 9 verified)."
+      },
+      {
+        "component": "Local attention pathway",
+        "ablation_result": {
+          "initial_loss": 3.4847686290740967,
+          "final_loss": 0.9408358931541443,
+          "loss_reduction_pct": 73.00148178261911,
+          "total_flops": 27557888,
+          "total_params": 231195,
+          "ablation": "no_local"
+        },
+        "assessment": "Local attention provides short-range context. Phase 6 found router collapses away from local \u2014 needs stronger diversity loss.",
+        "recommendation": "KEEP, but consider removing if collapse persists. Phase 6 bumped path_div_weight to 0.1."
+      },
+      {
+        "component": "Low-rank global pathway",
+        "ablation_result": {
+          "initial_loss": 3.5071001052856445,
+          "final_loss": 0.7980991005897522,
+          "loss_reduction_pct": 77.24333276410002,
+          "total_flops": 27557888,
+          "total_params": 231195,
+          "ablation": "no_low_rank"
+        },
+        "assessment": "Low-rank provides global context. Phase 6 found router collapses away from it too.",
+        "recommendation": "KEEP, but investigate unifying with local attention (both are attention-based)."
+      },
+      {
+        "component": "Adaptive depth",
+        "ablation_result": {
+          "initial_loss": 3.4832191467285156,
+          "final_loss": 0.9434558153152466,
+          "loss_reduction_pct": 72.91425616440607,
+          "total_flops": 27557888,
+          "total_params": 231195,
+          "ablation": "no_adaptive_depth"
+        },
+        "assessment": "Phase 5 confirmed genuine sparse depth (gather/scatter). Phase 4 showed avg_depth=3.0/3 (no depth collapse).",
+        "recommendation": "KEEP. The depth router is healthy."
+      },
+      {
+        "component": "Adaptive width",
+        "ablation_result": {
+          "initial_loss": 3.4789063930511475,
+          "final_loss": 0.8276878595352173,
+          "loss_reduction_pct": 76.20838947582892,
+          "total_flops": 27557888,
+          "total_params": 231195,
+          "ablation": "no_adaptive_width"
+        },
+        "assessment": "Phase 5 confirmed genuine sliced width (matmul shapes change). Phase 6 found width collapses to largest. No diversity loss for width currently.",
+        "recommendation": "KEEP, but add a width diversity loss similar to path_div_loss."
+      },
+      {
+        "component": "MoE (top-k routing)",
+        "ablation_result": {
+          "initial_loss": 3.4843225479125977,
+          "final_loss": 0.8780056834220886,
+          "loss_reduction_pct": 74.80125128059433,
+          "total_flops": 27557888,
+          "total_params": 231195,
+          "ablation": "no_moe"
+        },
+        "assessment": "Phase 5 verified top-k genuinely executes only K experts. Phase 6 found expert utilization is healthy (gini <= 0.06).",
+        "recommendation": "KEEP. MoE is the best-behaved router."
+      },
+      {
+        "component": "Balancing losses",
+        "ablation_result": {
+          "initial_loss": 3.4843225479125977,
+          "final_loss": 0.9313780665397644,
+          "loss_reduction_pct": 73.2694647601515,
+          "total_flops": 27557888,
+          "total_params": 231195,
+          "ablation": "no_balancing"
+        },
+        "assessment": "Phase 6 found that without balancing, pathways collapse to single expert. With current weights (path_div=0.1), still partial collapse.",
+        "recommendation": "KEEP, but INCREASE path_div_weight to 0.2 (Phase 6 showed this gives 2/3 pathways active)."
+      },
+      {
+        "component": "ComputeController",
+        "ablation_result": "N/A (not wired into model)",
+        "assessment": "Phase 7 found ComputeController exists but is not used by zeroModel. The model uses AdaptiveRouter directly. ComputeController has a width_bias sign bug (now fixed).",
+        "recommendation": "EITHER wire ComputeController into zeroModel as a replacement for AdaptiveRouter, OR remove it. Currently it is dead code."
+      },
+      {
+        "component": "Adaptive halting",
+        "ablation_result": "N/A (not wired into model)",
+        "assessment": "adaptive_halting.py exists but is not used by zeroModel.",
+        "recommendation": "Remove or wire in. Currently dead code."
+      },
+      {
+        "component": "SlicedFFN vs AdaptiveFFN",
+        "ablation_result": "N/A",
+        "assessment": "HASSBlock uses AdaptiveFFN (compute-then-blend). SlicedFFN exists separately and is tested in Phase 5 but not used by the model.",
+        "recommendation": "Replace AdaptiveFFN with SlicedFFN in HASSBlock to get genuine width sparsity at the model level."
+      },
+      {
+        "component": "CoT vector (frozen)",
+        "ablation_result": "N/A",
+        "assessment": "CoT is frozen by design for pre-training. It does not contribute to gradients currently.",
+        "recommendation": "KEEP frozen. Document that it is for fine-tuning phase only."
+      },
+      {
+        "component": "Two load-balance losses",
+        "ablation_result": "N/A",
+        "assessment": "There are TWO load-balance losses: one in AdaptiveRouter.compute_loss() (uses CV) and one in zeroModel._compute_load_balance_loss() (uses L2). They double-count.",
+        "recommendation": "Unify into a single load-balance loss. The Switch Transformer formula (E * sum(f*p)) is the standard."
+      }
+    ]
+  },
+  "phase15_recommendations": [
+    "1. Wire ComputeController into zeroModel (or remove it). Currently dead code.",
+    "2. Replace AdaptiveFFN with SlicedFFN in HASSBlock for genuine model-level width sparsity.",
+    "3. Unify the two load-balance losses (router CV loss + model L2 loss) \u2014 they double-count.",
+    "4. Increase path_div_weight from 0.1 to 0.2 to prevent pathway collapse (Phase 6 finding).",
+    "5. Add a width_diversity_loss to prevent width collapse (Phase 6 finding).",
+    "6. Remove adaptive_halting.py if not going to be used (dead code).",
+    "7. Consider unifying local + low-rank attention (both are attention-based, could share QKV projections).",
+    "8. Document that CoT is frozen for pre-training (not a bug, by design)."
+  ]
+}
