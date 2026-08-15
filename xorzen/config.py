@@ -439,6 +439,24 @@ class ModelConfig(BaseConfig):
     min_depth: int = 3
     width_choices: Tuple[int, ...] = (384, 768, 1152, 1536, 2048)
     path_choices: int = 3  # Local, Low-rank, SSM
+    # How many of the 3 HASS pathways to actually execute per token.
+    # 1 = only the top-1 pathway runs (max sparsity, max savings, risk of
+    #     dropped signal). 2 = top-2 pathways run. 3 = all pathways run
+    # (no sparsity, equivalent to the old dense-blend behavior).
+    # At training time the soft probs are still used for the backward pass
+    # (straight-through estimator); at inference the hard top-k runs.
+    pathway_top_k: int = 2
+    # Global compute budget in [0, 1]. The router conditions its decisions
+    # on this scalar so the same trained model can run at different
+    # quality/compute tradeoffs. 1.0 = full compute, 0.25 = quarter compute.
+    # See ``ComputeController`` in ``compute_controller.py``.
+    compute_budget: float = 1.0
+    # Whether to enable adaptive halting (early exit per token). When True,
+    # the model estimates per-token difficulty after each block and exits
+    # tokens that are "solved" up to ``halting_threshold``. Disabled by
+    # default to preserve backward compatibility.
+    adaptive_halting: bool = False
+    halting_threshold: float = 0.9
     
     # Router configuration
     router_hidden_dim: int = 128

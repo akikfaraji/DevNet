@@ -119,33 +119,36 @@ class FastSSMPathway(nn.Module):
     # ------------------------------------------------------------------
     def _vectorised_scan(self, Bv: torch.Tensor, Ab: torch.Tensor) -> torch.Tensor:
         """
-        Numerically stable sequential scan.
-        Recurrence: h_t = Ab_t * h_{t-1} + Bv_t   (diagonal A, no matrix_exp)
-
-        The log-cumsum parallel formulation overflows for T >= ~60 because
-        exp(-cum_log) = exp(+|cum_log|) which grows unboundedly.
-        Sequential scan avoids this: Ab is always in (0, 1), so state stays bounded.
+        Numerically stable scan. Kept for backward compatibility and as a
+        reference for tests. For new code, prefer
+        ``xorzen.model.components.ssm_scan.select_scan`` which dispatches
+        to a chunked scan (T/chunk Python iterations) or the Blelloch
+        parallel scan.
 
         Args:
-            Bv : [B, T, state]  -- input projections
+            Bv : [B, T, state]  -- *discrete* input (already B_bar)
             Ab : [B, T, state]  -- per-step decay factors in (0, 1)
         Returns:
             states : [B, T, state]
         """
-        B, T, sd = Bv.shape
-        state = torch.zeros(B, sd, device=Bv.device, dtype=Bv.dtype)
-        outs  = []
-        for t in range(T):
-            state = Ab[:, t, :] * state + Bv[:, t, :]
-            outs.append(state)
-        return torch.stack(outs, dim=1)    # [B, T, state]
+        from xorzen.model.components.ssm_scan import sequential_scan
+        return sequential_scan(Ab, Bv)
 
     # ------------------------------------------------------------------
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass with proper ZOH discretization of BOTH A and B.
+
+        See ``xorzen.model.components.ssm_scan.discretize_zoh`` for the math.
+        The single-C output (no double-C bug) matches the corrected
+        ``SSMPathway.forward`` in ``hass_block.py``.
+        """
+        from xorzen.model.components.ssm_scan import (
+            discretize_zoh, select_scan,
+        )
+
         B, T, _ = x.shape
 
         x_norm = self.ln_input(x)
-
         if self.conv is not None:
             x_conv = self.conv(x_norm.transpose(1, 2)).transpose(1, 2)
             x_norm = x_norm + x_conv
@@ -154,24 +157,56 @@ class FastSSMPathway(nn.Module):
         gate, input_gate = gate_raw.chunk(2, dim=-1)
         gate = torch.sigmoid(gate)
 
-        # Input-dependent discretisation (Mamba style)
-        dt = F.softplus(self.dt_proj(x_norm))              # [B, T, state]
-        a  = -torch.exp(self.A_log)                        # [state]  negative
-        Ab = torch.exp(dt * a.unsqueeze(0).unsqueeze(0))   # [B, T, state]
-
+        # Continuous-time SSM inputs
         Bv = self.B_proj(x_norm * torch.sigmoid(input_gate))  # [B, T, state]
         C  = self.C_proj(x_norm)                              # [B, T, state]
 
-        states  = self._vectorised_scan(Bv, Ab)
-        states  = self.ln_state(states)
-        ssm_out = C * states
+        # ZOH discretization of BOTH A and B (diagonal A).
+        dt = F.softplus(self.dt_proj(x_norm))                 # [B, T, state]
+        a  = -torch.exp(self.A_log)                           # [state], negative
+        A_bar, B_bar = discretize_zoh(a, Bv, dt)              # both [B, T, state]
+
+        # Scan: h_t = A_bar_t * h_{t-1} + B_bar_t
+        states = select_scan(A_bar, B_bar)
+        states = self.ln_state(states)
+        ssm_out = C * states          # single C, no double-C bug
         ssm_out = self.D_proj(ssm_out)
         output  = ssm_out * gate
         return self.dropout(output)
 
     # ------------------------------------------------------------------
     def forward_parallel(self, x: torch.Tensor) -> torch.Tensor:
-        return self.forward(x)
+        """Parallel-scan forward — uses the real Blelloch scan for T > 64."""
+        from xorzen.model.components.ssm_scan import (
+            discretize_zoh, parallel_scan, sequential_scan,
+        )
+
+        B, T, _ = x.shape
+        x_norm = self.ln_input(x)
+        if self.conv is not None:
+            x_conv = self.conv(x_norm.transpose(1, 2)).transpose(1, 2)
+            x_norm = x_norm + x_conv
+
+        gate_raw = self.gate_proj(x_norm)
+        gate, input_gate = gate_raw.chunk(2, dim=-1)
+        gate = torch.sigmoid(gate)
+
+        Bv = self.B_proj(x_norm * torch.sigmoid(input_gate))
+        C  = self.C_proj(x_norm)
+        dt = F.softplus(self.dt_proj(x_norm))
+        a  = -torch.exp(self.A_log)
+        A_bar, B_bar = discretize_zoh(a, Bv, dt)
+
+        if T > 64:
+            states = parallel_scan(A_bar, B_bar)
+        else:
+            states = sequential_scan(A_bar, B_bar)
+
+        states = self.ln_state(states)
+        ssm_out = C * states
+        ssm_out = self.D_proj(ssm_out)
+        output = ssm_out * gate
+        return self.dropout(output)
 
     # ------------------------------------------------------------------
     def get_compute_stats(self, seq_len: int, batch_size: int = 1) -> dict:

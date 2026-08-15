@@ -326,27 +326,37 @@ class ExpertDiskManager:
     def load_expert(self, expert_id: int, device: str = 'cpu') -> ExpertFFN:
         """
         Load expert from disk.
-        
+
+        The loaded expert's train/eval state is NOT forced — it follows the
+        parent module's state. The previous implementation called
+        ``expert.eval()`` unconditionally, which (a) disabled dropout inside
+        experts during training, and (b) prevented ``model.train()`` from
+        propagating to cached experts. The fix: do not call ``.eval()`` here;
+        let ``ShardedExpertFabric.train()`` / ``.eval()`` (which recurse into
+        all submodules including the cache) set the state.
+
         Args:
             expert_id: Expert index
             device: Device to load expert on
-        
+
         Returns:
-            Loaded expert module
+            Loaded expert module (in training mode by default — the parent
+            module's subsequent ``.train()``/``.eval()`` call will set the
+            correct state).
         """
         expert_path = self.get_expert_path(expert_id)
-        
+
         if not expert_path.exists():
             # Create new expert if doesn't exist
             logger.debug("zmoe", f"Expert {expert_id} not found, creating new...")
             expert = self._create_new_expert(expert_id)
             self.save_expert(expert_id, expert)
             return expert.to(device)
-        
+
         # Load from disk
         start_time = time.time()
         checkpoint = torch.load(expert_path, map_location=device)
-        
+
         # Create expert and load state
         expert = ExpertFFN(
             hidden_dim=self.hidden_dim,
@@ -355,11 +365,15 @@ class ExpertDiskManager:
         expert.expert_id = expert_id
         expert.load_state_dict(checkpoint['state_dict'])
         expert = expert.to(device)
-        expert.eval()  # Set to eval mode
-        
+        # NOTE: do NOT call expert.eval() here. The parent ShardedExpertFabric
+        # (and ultimately the zeroModel) is responsible for setting train/eval
+        # state via .train()/.eval(), which recurses into all submodules
+        # including cached experts. Forcing eval here breaks training because
+        # dropout inside experts is disabled and BatchNorm-style stats freeze.
+
         load_time = (time.time() - start_time) * 1000  # ms
         logger.debug("zmoe", f"Loaded expert {expert_id} in {load_time:.2f}ms")
-        
+
         return expert
     
     def _create_new_expert(self, expert_id: int) -> ExpertFFN:
@@ -606,12 +620,17 @@ class ShardedExpertFabric(nn.Module):
                     was_cached=was_cached,
                     load_time=load_time
                 )
-        
-        # Normalize by total weight (should be close to 1.0 already from softmax)
-        # But we do it anyway for numerical stability
-        total_weight = expert_weights.sum(dim=1, keepdim=True)  # [N, 1]
-        output = output / (total_weight + 1e-8)
-        
+
+        # NOTE: do NOT re-normalize by sum(expert_weights).
+        # The MoE output is sum_k w_k * E_k(x), NOT a weighted average.
+        # Re-normalization (the old bug) dampened the MoE signal: when all
+        # weights summed to < 1 (e.g. due to top-k normalization with K < E),
+        # the output was rescaled to ~single-expert magnitude, destroying the
+        # weighted-sum semantics that the router was trained to produce.
+        # The router already L1-normalizes the top-k weights to sum to 1 via
+        # ``top_k_weights = top_k_weights / (top_k_weights.sum(dim=-1, keepdim=True) + 1e-12)``
+        # in ``AdaptiveRouter._route_experts``, so the sum is already ~1.0.
+
         # Compute auxiliary loss for load balancing
         load_balance_loss = self._compute_load_balance_loss(
             expert_indices,

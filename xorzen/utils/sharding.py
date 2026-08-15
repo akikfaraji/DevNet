@@ -345,10 +345,15 @@ class LRUCache:
                 del self.access_counts[key]
             
             self.evictions += 1
-            
-            # Force garbage collection
+
+            # Drop the reference; do NOT call gc.collect() here.
+            # gc.collect() is expensive (10-100ms) and serializes all cache
+            # operations. The old code called it on every eviction, which
+            # made the cache a serial bottleneck under high churn. Python's
+            # reference counting will free the tensor immediately when its
+            # refcount drops to zero; gc.collect() is only needed for cycles,
+            # which nn.Module / tensor trees don't typically have.
             del value
-            gc.collect()
     
     def remove(self, key: int) -> bool:
         """
@@ -381,7 +386,9 @@ class LRUCache:
             self.access_times.clear()
             self.access_counts.clear()
             self.current_memory = 0
-            gc.collect()
+            # NOTE: no gc.collect() — refcounting handles tensor deallocation
+            # immediately. gc.collect() is only useful for breaking reference
+            # cycles, which we don't expect in tensor/Module trees.
     
     def contains(self, key: int) -> bool:
         """Check if key is in cache."""
@@ -484,12 +491,29 @@ class MemoryMappedShard:
         numpy_array = np.frombuffer(buffer, dtype=self.storage_numpy_dtype)
         numpy_array = numpy_array.reshape(shape)
         
-        torch_tensor = torch.from_numpy(numpy_array).clone() # Use .clone() to ensure a new tensor
-        
-        # Convert back to original dtype if it was bfloat16
+        # Convert to tensor.
+        # torch.from_numpy(numpy_array) creates a tensor that SHARES memory
+        # with the numpy array, which in turn shares memory with the mmap
+        # buffer. If the mmap is later closed (e.g. expert evicted from
+        # cache and the mmap object goes out of scope), accessing the tensor
+        # would be a use-after-free bug. The .clone() detaches the tensor
+        # from the mmap buffer so it remains valid after the mmap closes.
+        #
+        # This is NOT zero-copy — the clone allocates new memory and copies
+        # the data. A truly zero-copy path would keep the mmap open for the
+        # lifetime of the tensor; that is a future optimization (e.g. by
+        # having the LRUCache hold a reference to the mmap object alongside
+        # the tensor).
+        torch_tensor = torch.from_numpy(numpy_array).clone()
+
+        # Convert back to original dtype if it was bfloat16.
+        # NOTE: bfloat16 experts are stored as float32 on disk (double size)
+        # because numpy's frombuffer does not natively support bfloat16.
+        # A future optimization would store bfloat16 as raw 2-byte values
+        # and use torch.frombuffer (which does support bfloat16) instead.
         if dtype == torch.bfloat16:
             return torch_tensor.to(torch.bfloat16)
-        
+
         return torch_tensor
     
     def write_tensor(self, offset: int, tensor: torch.Tensor):
@@ -631,14 +655,46 @@ class ExpertShardManager:
                    f"{max_cache_memory_gb:.1f} GB cache")
     
     def _load_metadata(self) -> Dict[int, ShardMetadata]:
-        """Load metadata from file."""
+        """Load metadata from file.
+
+        Converts the JSON dict (string keys, plain dict values) into the
+        canonical in-memory form (int keys, ShardMetadata values).
+
+        The previous implementation returned the raw JSON dict, which has
+        string keys and dict values — every subsequent ``self.metadata[int_id]``
+        lookup would miss silently, and every ``meta.attribute`` access would
+        raise AttributeError. This is the root cause of the
+        "Expert {id} not found" restart bug.
+        """
         if self.metadata_file.exists():
             try:
                 with open(self.metadata_file, 'r') as f:
-                    return json.load(f)
+                    raw = json.load(f)
+                # Convert: {str_id: plain_dict} -> {int_id: ShardMetadata}
+                result: Dict[int, ShardMetadata] = {}
+                for k, v in raw.items():
+                    try:
+                        int_id = int(k)
+                    except (ValueError, TypeError):
+                        logger.warning(
+                            "sharding",
+                            f"Skipping metadata entry with non-int key {k!r}",
+                        )
+                        continue
+                    if isinstance(v, ShardMetadata):
+                        # Already a ShardMetadata (e.g. from a prior in-memory load)
+                        result[int_id] = v
+                    elif isinstance(v, dict):
+                        result[int_id] = ShardMetadata.from_dict(v)
+                    else:
+                        logger.warning(
+                            "sharding",
+                            f"Skipping metadata entry {int_id} with value type {type(v).__name__}",
+                        )
+                return result
             except Exception as e:
                 logger.error("sharding", f"Failed to load metadata: {e}")
-        
+
         return {}
     
     def _save_metadata(self):
@@ -1465,26 +1521,38 @@ class XORZENXShardingSystem:
     ) -> torch.Tensor:
         """
         Main dispatch method.
-        
+
         Args:
             x: Input tensor
             expert_weights: Expert weights
             expert_indices: Expert indices
-            
+
         Returns:
             Combined output
         """
-        # Update GDS if enabled
+        # Update GDS if enabled.
+        # The old implementation recorded ``torch.tensor(1.0)`` as a fake
+        # gradient for every expert in the batch, which made every expert
+        # equally "important" and rendered GDS placement a no-op.
+        # The fix: use the actual routing weight as a proxy for importance
+        # (experts that receive higher-weight tokens are more important to
+        # keep resident). This is not a true gradient (which would require a
+        # backward hook), but it is a meaningful signal: experts with higher
+        # average routing weight contribute more to the loss and should be
+        # preferentially cached.
         if self.gds is not None:
-            # Record gradients (simplified - in reality would hook into backward)
+            # Compute mean routing weight per unique expert id.
             unique_experts = torch.unique(expert_indices).tolist()
             for expert_id in unique_experts:
-                # Simplified gradient recording
-                self.gds.record_gradient(expert_id, torch.tensor(1.0))
-        
+                mask = (expert_indices == expert_id)
+                # mean weight assigned to this expert across all (token, slot)
+                mean_w = expert_weights[mask].mean().detach()
+                # record_gradient expects a tensor whose .norm() reflects importance
+                self.gds.record_gradient(expert_id, mean_w)
+
         # Dispatch through batched dispatcher
         output = self.dispatcher.dispatch_batched(x, expert_weights, expert_indices)
-        
+
         return output
     
     def prefetch_experts(self, expert_ids: List[int]):
