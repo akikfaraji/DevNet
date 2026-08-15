@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xorzen"
+version = "0.2.4"
+description = "Advanced Hybrid Transformer Framework with MoE, SSM, and Adaptive Routing"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Akik Faraji", email = "akikfaraji@gmail.com"}]
+license = {text = "XORZENX Proprietary License"}
+dependencies = [
+    "torch",
+    "transformers",
+    "tokenizers",
+    "sentencepiece",
+    "einops",
+    "tqdm",
+    "numpy",
+    "pydantic",
+    "psutil",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "black"]
+
+[tool.setuptools.packages.find]
+include = ["xorzen*"]

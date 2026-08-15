@@ -1,0 +1,23 @@
+{
+  "name": "xorzen_agi_tokenizer_65k",
+  "vocab_size": 65000,
+  "version": "1.0.0",
+  "description": "Custom trained tokenizer with 65000 tokens",
+  "special_tokens": {
+    "pad_token": "<pad>",
+    "pad_token_id": 0,
+    "unk_token": "<unk>",
+    "unk_token_id": 1,
+    "bos_token": "<s>",
+    "bos_token_id": 2,
+    "eos_token": "</s>",
+    "eos_token_id": 3
+  },
+  "created_at": "2026-02-22T21:27:28.654570",
+  "author": "Akik faraji",
+  "training_files_summary": {
+    "count": 3024,
+    "source": "Project Gutenberg corpus (English literature)",
+    "note": "Original absolute filesystem paths stripped for portability. Re-train the tokenizer to regenerate the file list."
+  }
+}

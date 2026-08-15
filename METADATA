@@ -1,0 +1,212 @@
+Metadata-Version: 2.4
+Name: xorzen
+Version: 0.2.4
+Summary: Advanced Hybrid Transformer Framework with MoE, SSM, and Adaptive Routing
+Home-page: https://github.com/Akik-Forazi/xorzen
+Author: Akik Faraji
+Author-email: Akik Faraji <akikfaraji@gmail.com>
+License: XORZENX Proprietary License
+        Copyright (c) 2025 Akik Faraji / Fraziym Tech. All Rights Reserved.
+        
+        ==============================================================================
+                                  PROPRIETARY SOFTWARE LICENSE
+        ==============================================================================
+        
+        This software and associated documentation files (the "Software"), including
+        but not limited to the XORZENX framework, zero model architecture, HASS blocks,
+        MoE routing mechanisms, and all related intellectual property, are the
+        exclusive property of Akik Faraji and Fraziym Tech.
+        
+        TERMS AND CONDITIONS:
+        
+        1. GRANT OF LICENSE
+           Subject to the terms of this license, you are granted a limited,
+           non-exclusive, non-transferable, revocable license to:
+           
+           a) Install and use the Software for personal, educational, or research
+              purposes
+           b) Experiment with and evaluate the Software
+           c) Use the Software for non-commercial projects
+           
+        2. RESTRICTIONS
+           You may NOT, without explicit written permission from Akik Faraji:
+           
+           a) Redistribute, sublicense, sell, or lease the Software
+           b) Modify, adapt, translate, or create derivative works
+           c) Reverse engineer, decompile, or disassemble the Software
+           d) Remove or alter any proprietary notices, labels, or marks
+           e) Use the Software for commercial purposes
+           f) Claim the architecture, algorithms, or innovations as your own
+           g) Publish papers or articles using XORZENX architecture without attribution
+           h) Create competing products based on XORZENX architecture
+           i) Extract or replicate the HASS, MoE, or routing mechanisms
+           
+        3. INTELLECTUAL PROPERTY RIGHTS
+           All rights, title, and interest in and to the Software, including:
+           
+           a) XORZENX Framework architecture
+           b) zero model family designs
+           c) Hybrid Attention State Space (HASS) blocks
+           d) Mixture of Experts (MoE) routing mechanisms
+           e) Adaptive routing algorithms
+           f) Internal Chain-of-Thought (CoT) implementations
+           g) Training methodologies and optimizations
+           h) All associated algorithms, techniques, and innovations
+           
+           Are and shall remain the exclusive property of Akik Faraji and Fraziym Tech.
+        
+        4. ATTRIBUTION REQUIREMENTS
+           If you use XORZENX in research, publications, or projects, you MUST:
+           
+           a) Cite: "XORZENX Framework by Akik Faraji, Fraziym Tech (2025)"
+           b) Provide a link to the official XORZENX repository
+           c) Acknowledge the use of XORZENX architecture in any published work
+           d) NOT claim the architecture or innovations as your own
+           
+        5. COMMERCIAL USE
+           Commercial use requires a separate commercial license.
+           Contact: akikfaraji@gmail.com
+           
+        6. TERMINATION
+           This license automatically terminates if you violate any of these terms.
+           Upon termination, you must destroy all copies of the Software.
+           
+        7. NO WARRANTY
+           THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+           IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
+           FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+           
+        8. LIMITATION OF LIABILITY
+           IN NO EVENT SHALL AKIK FARAJI OR FRAZIYM TECH BE LIABLE FOR ANY CLAIM,
+           DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
+           
+        9. PATENT PENDING
+           Certain features and innovations in XORZENX are subject to pending patent
+           applications. Unauthorized use may constitute patent infringement.
+           
+        10. GOVERNING LAW
+            This license shall be governed by and construed in accordance with
+            applicable international copyright and intellectual property laws.
+        
+        ==============================================================================
+        
+        For licensing inquiries, commercial use, or questions:
+        Email: akikfaraji@gmail.com
+        Website: None.
+        
+        XORZENX, zero, HASS, and related marks are trademarks of Fraziym Tech.
+        
+        ==============================================================================
+                                  © 2025 Akik Faraji / Fraziym Tech
+                                      All Rights Reserved.
+        ==============================================================================
+        
+Project-URL: Homepage, https://github.com/Akik-Faraji/
+Project-URL: Documentation, https://github.com/Akik-Faraji/xorzen/wiki
+Project-URL: Repository, https://github.com/Akik-Faraji/xorzen
+Project-URL: Issues, https://github.com/Akik-Faraji/xorzen/issues
+Keywords: deep-learning,transformer,moe,ssm,state-space-model,mixture-of-experts,ai,machine-learning,pytorch,nlp
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: torch
+Requires-Dist: transformers
+Requires-Dist: tokenizers
+Requires-Dist: sentencepiece
+Requires-Dist: einops
+Requires-Dist: tqdm
+Requires-Dist: numpy
+Requires-Dist: datasets
+Requires-Dist: accelerate
+Requires-Dist: quanto
+Requires-Dist: pydantic
+Requires-Dist: pyarrow
+Requires-Dist: pandas
+Requires-Dist: psutil
+Requires-Dist: scipy
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Dynamic: author
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-python
+
+# XORZENX Framework: It's like, a really cool AI thingy!
+
+## What is this thing even?
+
+So, XORZENX is this super fancy (I think?) deep learning framework that helps you make, like, really good and fast transformer models. It's got this totally new "hybrid architecture" thing with a "Mixture-of-Experts (MoE)" and some "adaptive routing" stuff that's supposed to make it super-efficient without, like, losing its awesomeness. It's mostly for language stuff, like making computers talk good, and it saves a bunch of computer memory, which is neat.
+
+## Cool Stuff It Can Do (Features, I guess?)
+
+*   **Hybrid Transformer Architecture**: It's like, a mix of local and global attention (whatever that means) and some "State Space Models (SSM)" for handling sequences. Sounds complicated, but it works!
+*   **Mixture-of-Experts (MoE) System**: This is where it gets spicy! It's got this smart way of picking the best "experts" (little pieces of the model) using "dynamic Top-K routing." So it only uses the important bits, which makes it fast and can handle more stuff.
+*   **Adaptive Routing**: It's like a smart traffic cop for your data! It moves things around based on depth, width, path, and experts. So the computer doesn't have to do extra work. Smart, right?
+*   **Internal Chain-of-Thought (CoT)**: This is kinda trippy. It's like the AI thinking about thinking, which helps it make better decisions and, like, explain itself a bit.
+*   **Super Fast (High Efficiency)**: It only turns on a few parts of the brain (like 9.4% active parameters!) so it saves a ton of power and memory. Good for, like, older computers or something.
+*   **Easy to Use (User-Friendly API)**: They tried to make it easy to use, even for me! You can make models, train them, and use them without, like, going to rocket science school. Comes with some pre-made tokenizers too, which is nice.
+
+## How to Get It (Install, duh!)
+
+Just type this into your computer:
+
+```bash
+pip install xorzen
+```
+
+## Get Started (The Super Quick Version)
+
+Here's how I figured out how to use it for the first time:
+
+```python
+import xorzen
+# Wait, I think this should be Zero_1M now, not zero_1M.
+# I need to fix this example to say Zero_1M. My bad.
+from xorzen.models import zero_1M # <-- FIX ME! Should be Zero_1M
+from xorzen.tokenizer import load_pretrained
+
+# Load the tokenizer thingy (it's like, how the computer reads words.)
+tokenizer = load_pretrained('xorzen_bpe_10k')
+
+# Make an zero_1M model. Or zero, an Zero_1M model. I need to remember to change that.
+# The vocab_size just means how many words it knows.
+model = zero_1M(vocab_size=tokenizer.get_vocab_size()) # <-- FIX ME! Should be Zero_1M
+
+# Uh, then you do more stuff, like, feed it data and train it.
+# Check the official docs if you're super serious about it.
+```
+
+## Models You Can Use (Like, the Pre-Built Ones)
+
+The XORZENX thingy has some models already made for you:
+
+*   **zero_1M**: This is a small one, like 5.66 million parameters. Good for when your computer isn't super powerful. (I should probably change this to Zero_1M too, shouldn't I?)
+
+## Help Out! (Contributing)
+
+If you're a super smart coder and want to help, go to our GitHub! It's where all the cool kids hang out.
+
+**GitHub (My Personal Repo, kinda)**: [github.com/Akik-Forazi/XORZENX.git](github.com/Akik-Forazi/XORZENX.git)
+
+## The Legal Stuff (License)
+
+It's MIT License. I think that means you can do whatever you want with it, but don't blame me if it breaks.
+
+## Holler At Me (Contact)
+
+Got questions? Need help? Email me, I guess my mail address is: akikfaraji@gmail.com. I'll try to reply, maybe.
+
+## Shout Outs! (Acknowledgments)
+
+Made this with lots of coffee, late nights, and some AI help (it's a secret!).

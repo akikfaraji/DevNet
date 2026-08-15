@@ -1,0 +1,22 @@
+{
+  "name": "zero_bpe_10k",
+  "vocab_size": 10000,
+  "version": "1.0.0",
+  "description": "Custom trained tokenizer with 10000 tokens",
+  "special_tokens": {
+    "pad_token": "<pad>",
+    "pad_token_id": 0,
+    "unk_token": "<unk>",
+    "unk_token_id": 1,
+    "bos_token": "<s>",
+    "bos_token_id": 3,
+    "eos_token": "</s>",
+    "eos_token_id": 4
+  },
+  "training_files_summary": {
+    "source": "Project Gutenberg corpus (English literature)",
+    "note": "Original absolute filesystem path stripped for portability."
+  },
+  "created_at": "2026-02-22T21:59:51.581334",
+  "author": "Akik faraji"
+}

@@ -1,0 +1,95 @@
+XORZENX Proprietary License
+Copyright (c) 2025 Akik Faraji / Fraziym Tech. All Rights Reserved.
+
+==============================================================================
+                          PROPRIETARY SOFTWARE LICENSE
+==============================================================================
+
+This software and associated documentation files (the "Software"), including
+but not limited to the XORZENX framework, zero model architecture, HASS blocks,
+MoE routing mechanisms, and all related intellectual property, are the
+exclusive property of Akik Faraji and Fraziym Tech.
+
+TERMS AND CONDITIONS:
+
+1. GRANT OF LICENSE
+   Subject to the terms of this license, you are granted a limited,
+   non-exclusive, non-transferable, revocable license to:
+   
+   a) Install and use the Software for personal, educational, or research
+      purposes
+   b) Experiment with and evaluate the Software
+   c) Use the Software for non-commercial projects
+   
+2. RESTRICTIONS
+   You may NOT, without explicit written permission from Akik Faraji:
+   
+   a) Redistribute, sublicense, sell, or lease the Software
+   b) Modify, adapt, translate, or create derivative works
+   c) Reverse engineer, decompile, or disassemble the Software
+   d) Remove or alter any proprietary notices, labels, or marks
+   e) Use the Software for commercial purposes
+   f) Claim the architecture, algorithms, or innovations as your own
+   g) Publish papers or articles using XORZENX architecture without attribution
+   h) Create competing products based on XORZENX architecture
+   i) Extract or replicate the HASS, MoE, or routing mechanisms
+   
+3. INTELLECTUAL PROPERTY RIGHTS
+   All rights, title, and interest in and to the Software, including:
+   
+   a) XORZENX Framework architecture
+   b) zero model family designs
+   c) Hybrid Attention State Space (HASS) blocks
+   d) Mixture of Experts (MoE) routing mechanisms
+   e) Adaptive routing algorithms
+   f) Internal Chain-of-Thought (CoT) implementations
+   g) Training methodologies and optimizations
+   h) All associated algorithms, techniques, and innovations
+   
+   Are and shall remain the exclusive property of Akik Faraji and Fraziym Tech.
+
+4. ATTRIBUTION REQUIREMENTS
+   If you use XORZENX in research, publications, or projects, you MUST:
+   
+   a) Cite: "XORZENX Framework by Akik Faraji, Fraziym Tech (2025)"
+   b) Provide a link to the official XORZENX repository
+   c) Acknowledge the use of XORZENX architecture in any published work
+   d) NOT claim the architecture or innovations as your own
+   
+5. COMMERCIAL USE
+   Commercial use requires a separate commercial license.
+   Contact: akikfaraji@gmail.com
+   
+6. TERMINATION
+   This license automatically terminates if you violate any of these terms.
+   Upon termination, you must destroy all copies of the Software.
+   
+7. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+   
+8. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL AKIK FARAJI OR FRAZIYM TECH BE LIABLE FOR ANY CLAIM,
+   DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
+   
+9. PATENT PENDING
+   Certain features and innovations in XORZENX are subject to pending patent
+   applications. Unauthorized use may constitute patent infringement.
+   
+10. GOVERNING LAW
+    This license shall be governed by and construed in accordance with
+    applicable international copyright and intellectual property laws.
+
+==============================================================================
+
+For licensing inquiries, commercial use, or questions:
+Email: akikfaraji@gmail.com
+Website: None.
+
+XORZENX, zero, HASS, and related marks are trademarks of Fraziym Tech.
+
+==============================================================================
+                          © 2025 Akik Faraji / Fraziym Tech
+                              All Rights Reserved.
+==============================================================================
