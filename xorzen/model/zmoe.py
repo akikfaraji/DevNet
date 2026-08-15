@@ -791,12 +791,32 @@ class ShardedExpertFabric(nn.Module):
         """Set device for loading experts."""
         self.device = torch.device(device)
         logger.info("zmoe", f"MoE device set to: {self.device}")
-    
+
+    def train(self, mode: bool = True):
+        """
+        Override train() to propagate train/eval mode to ALL cached experts.
+
+        Phase 10 BUG FIX: LRUExpertCache is a plain Python class (not
+        nn.Module), so nn.Module.train() does NOT recurse into it. This meant
+        that calling model.eval() during validation would NOT propagate to
+        experts in the cache — they would stay in training mode (dropout
+        active) and produce different outputs than at real inference time.
+        """
+        super().train(mode)
+        # Propagate to cached experts
+        with self.cache.lock:
+            for expert in self.cache.cache.values():
+                expert.train(mode)
+        # Also propagate to dummy expert if in test mode
+        if self.test_mode and hasattr(self, 'dummy_expert'):
+            self.dummy_expert.train(mode)
+        return self
+
     def clear_cache(self):
         """Clear expert cache."""
         self.cache.clear()
         logger.info("zmoe", "Expert cache cleared")
-    
+
     def save_all_experts(self):
         """Force save all cached experts to disk."""
         logger.info("zmoe", "Saving all cached experts to disk...")

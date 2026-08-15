@@ -1,0 +1,27 @@
+{
+  "verdicts": {
+    "step1_save_experts": true,
+    "step5_reload_manifest": true,
+    "step5_expert_0_exists": true,
+    "step5_expert_1_exists": true,
+    "step5_expert_2_exists": true,
+    "step5_expert_3_exists": true,
+    "step7_weights_match": true,
+    "step8_inference": true,
+    "step9_training_gradients": true,
+    "step10_lru_eviction": true,
+    "step11_reload_evicted": true,
+    "step12_cache_tracking": true,
+    "step13_train_eval_mode": true,
+    "step14_dtype": true
+  },
+  "metrics": {
+    "n_experts": 4,
+    "cache_capacity": 3,
+    "experts_reloaded_after_restart": 4,
+    "weights_matched_after_restart": 4,
+    "cache_evictions_observed": 14,
+    "cache_hits_observed": 1
+  },
+  "overall_pass": true
+}
