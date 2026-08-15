@@ -1,0 +1,194 @@
+{
+  "phase11_profile": {
+    "total_flops": 38297600,
+    "wall_clock_ms_per_forward": 11.38531199994759,
+    "tokens_per_second": 11242.555320450527,
+    "by_subsystem": {
+      "router": 6930432,
+      "blocks": 25681920,
+      "moe": 3145728,
+      "merger": 2277376,
+      "lm_head": 262144
+    },
+    "top_10_modules": [
+      [
+        "router.feature_encoder.0",
+        2621440
+      ],
+      [
+        "blocks.0.pathways.low_rank.to_low_rank",
+        2236416
+      ],
+      [
+        "blocks.0.pathways.low_rank.from_low_rank",
+        2236416
+      ],
+      [
+        "blocks.1.pathways.low_rank.to_low_rank",
+        2236416
+      ],
+      [
+        "blocks.1.pathways.low_rank.from_low_rank",
+        2236416
+      ],
+      [
+        "blocks.2.pathways.low_rank.to_low_rank",
+        2236416
+      ],
+      [
+        "blocks.2.pathways.low_rank.from_low_rank",
+        2236416
+      ],
+      [
+        "router.feature_encoder.4",
+        2097152
+      ],
+      [
+        "merger.merger_impl.gate_controller.0",
+        1835008
+      ],
+      [
+        "blocks.0.ffn.fc1",
+        1048576
+      ]
+    ],
+    "n_runs": 20
+  },
+  "phase11_bottlenecks": [
+    {
+      "subsystem": "blocks",
+      "flops": 25681920,
+      "pct": 67.05882352941175,
+      "likely_cause": "HASS block compute (depth/width/pathway routed)"
+    },
+    {
+      "subsystem": "router",
+      "flops": 6930432,
+      "pct": 18.09625668449198,
+      "likely_cause": "router MLP (always-on)"
+    },
+    {
+      "subsystem": "moe",
+      "flops": 3145728,
+      "pct": 8.213903743315507,
+      "likely_cause": "MoE expert compute (top-k routed)"
+    },
+    {
+      "subsystem": "merger",
+      "flops": 2277376,
+      "pct": 5.946524064171123,
+      "likely_cause": "merger gate (always-on)"
+    },
+    {
+      "subsystem": "lm_head",
+      "flops": 262144,
+      "pct": 0.6844919786096256,
+      "likely_cause": "vocab projection (always-on, not budget-controlled)"
+    }
+  ],
+  "phase13_baselines": [
+    {
+      "baseline": "A_dense",
+      "config": {
+        "pathway_top_k": 3,
+        "top_k_experts": 4,
+        "width_choices": [
+          32
+        ],
+        "num_layers": 3
+      },
+      "total_params": 227946,
+      "trainable_params": 197337,
+      "initial_loss": 3.461862564086914,
+      "final_loss": 0.6792002320289612,
+      "loss_reduction_pct": 80.38049693032502,
+      "total_flops_per_forward": 603512832,
+      "wall_clock_ms_per_forward": 13.870605299962335,
+      "tokens_per_second": 9228.14810398704,
+      "flops_per_token": 4714944.0,
+      "avg_depth": 3.0,
+      "path_entropy": 0.799697995185852,
+      "max_path_entropy": 1.0986122886681098
+    },
+    {
+      "baseline": "B_routing_disabled",
+      "config": {
+        "pathway_top_k": 2,
+        "top_k_experts": 2,
+        "width_choices": [
+          16,
+          32
+        ],
+        "num_layers": 3
+      },
+      "total_params": 231195,
+      "trainable_params": 200586,
+      "initial_loss": 3.4701058864593506,
+      "final_loss": 0.8483465313911438,
+      "loss_reduction_pct": 75.55271916337007,
+      "total_flops_per_forward": 358252544,
+      "wall_clock_ms_per_forward": 11.263888899884478,
+      "tokens_per_second": 11363.748447599903,
+      "flops_per_token": 2798848.0,
+      "avg_depth": 3.0,
+      "path_entropy": 0.14951685070991516,
+      "max_path_entropy": 1.0986122886681098
+    },
+    {
+      "baseline": "C_dense_exec",
+      "config": {
+        "pathway_top_k": 3,
+        "top_k_experts": 2,
+        "width_choices": [
+          16,
+          32
+        ],
+        "num_layers": 3
+      },
+      "total_params": 231195,
+      "trainable_params": 200586,
+      "initial_loss": 3.4731509685516357,
+      "final_loss": 0.6473817825317383,
+      "loss_reduction_pct": 81.36039036616633,
+      "total_flops_per_forward": 603619328,
+      "wall_clock_ms_per_forward": 10.942134899960365,
+      "tokens_per_second": 11697.90001405152,
+      "flops_per_token": 4715776.0,
+      "avg_depth": 3.0,
+      "path_entropy": 0.8733506798744202,
+      "max_path_entropy": 1.0986122886681098
+    },
+    {
+      "baseline": "D_genuine_sparse",
+      "config": {
+        "pathway_top_k": 2,
+        "top_k_experts": 2,
+        "width_choices": [
+          16,
+          32
+        ],
+        "num_layers": 3
+      },
+      "total_params": 231195,
+      "trainable_params": 200586,
+      "initial_loss": 3.4701058864593506,
+      "final_loss": 0.8483457565307617,
+      "loss_reduction_pct": 75.55274149295906,
+      "total_flops_per_forward": 358252544,
+      "wall_clock_ms_per_forward": 14.266430200041214,
+      "tokens_per_second": 8972.111327445476,
+      "flops_per_token": 2798848.0,
+      "avg_depth": 3.0,
+      "path_entropy": 0.14952008426189423,
+      "max_path_entropy": 1.0986122886681098
+    }
+  ],
+  "phase13_verdicts": {
+    "D_uses_less_flops_than_A": true,
+    "D_uses_less_flops_than_C": true,
+    "C_uses_same_or_more_than_A": true,
+    "D_loss_decreased": true,
+    "A_loss_decreased": true
+  },
+  "overall_pass": true
+}
