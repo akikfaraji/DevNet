@@ -1,0 +1,51 @@
+{
+  "description": "v0.4 model-level conditional compute (SlicedFFN wired in)",
+  "config": {
+    "hidden_size": 32,
+    "width_choices": [
+      16,
+      32
+    ],
+    "num_layers": 3,
+    "pathway_top_k": 1,
+    "expert_count": 4,
+    "top_k_experts": 2,
+    "use_sliced_ffn": true
+  },
+  "test1_width_sparsity": {
+    "small_width_flops": {
+      "width_idx": 0,
+      "actual_width": 16,
+      "total_flops": 13164544,
+      "ffn_flops": 393216
+    },
+    "large_width_flops": {
+      "width_idx": 1,
+      "actual_width": 32,
+      "total_flops": 13557760,
+      "ffn_flops": 786432
+    },
+    "ffn_flops_ratio": 0.5,
+    "expected_ratio": 0.5,
+    "pass": true
+  },
+  "test2_depth_sparsity": {
+    "all_active_flops": 13557760,
+    "none_active_flops": 9248768,
+    "reduction_pct": 31.782477341389725,
+    "pass": true
+  },
+  "test3_pathway_sparsity": {
+    "pathway_calls": {
+      "local": 0,
+      "low_rank": 0,
+      "ssm": 3
+    },
+    "pass": true
+  },
+  "test4_moe_sparsity": {
+    "experts_used": 1,
+    "pass": true
+  },
+  "overall_pass": true
+}

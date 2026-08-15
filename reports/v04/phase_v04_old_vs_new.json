@@ -1,0 +1,83 @@
+{
+  "description": "v0.4 architecture comparison: old vs new (200 training steps)",
+  "config_old": {
+    "use_sliced_ffn": false,
+    "width_div_weight": 0.0,
+    "path_div_weight": 0.1,
+    "unify_load_balance": false,
+    "cost_aware_routing": false
+  },
+  "config_new": {
+    "use_sliced_ffn": true,
+    "width_div_weight": 0.1,
+    "path_div_weight": 0.2,
+    "unify_load_balance": true,
+    "cost_aware_routing": true
+  },
+  "results": {
+    "old": {
+      "initial_loss": 3.4843225479125977,
+      "final_loss": 0.013212976045906544,
+      "loss_reduction_pct": 99.62078780410779,
+      "final_accuracy": 0.9833333492279053,
+      "total_flops": 27557888,
+      "total_params": 231195,
+      "median_runtime_ms": 7.359817998803919,
+      "avg_depth": 3.0,
+      "max_depth": 3,
+      "path_entropy": 0.40504026412963867,
+      "max_path_entropy": 1.0986122886681098,
+      "pathway_top1_dist": {
+        "2": 128
+      },
+      "num_active_pathways": 1,
+      "width_dist": {
+        "1": 128
+      },
+      "num_active_widths": 1,
+      "expert_call_count": {
+        "0": 128,
+        "3": 128
+      },
+      "num_active_experts": 2,
+      "variant": "old"
+    },
+    "new": {
+      "initial_loss": 3.472226619720459,
+      "final_loss": 0.006380106788128614,
+      "loss_reduction_pct": 99.81625315721351,
+      "final_accuracy": 0.9833333492279053,
+      "total_flops": 21266432,
+      "total_params": 227979,
+      "median_runtime_ms": 7.442209000146249,
+      "avg_depth": 3.0,
+      "max_depth": 3,
+      "path_entropy": 0.6721113920211792,
+      "max_path_entropy": 1.0986122886681098,
+      "pathway_top1_dist": {
+        "2": 128
+      },
+      "num_active_pathways": 1,
+      "width_dist": {
+        "0": 128
+      },
+      "num_active_widths": 1,
+      "expert_call_count": {
+        "0": 128,
+        "3": 128
+      },
+      "num_active_experts": 2,
+      "variant": "new"
+    }
+  },
+  "deltas": {
+    "loss_reduction_delta_pct": 0.19546535310571755,
+    "final_loss_delta": -0.006832869257777929,
+    "accuracy_delta": 0.0,
+    "flops_delta_pct": -22.829964328180736,
+    "runtime_delta_pct": 1.1194706357646331,
+    "path_entropy_delta": 0.2670711278915405,
+    "num_active_pathways_delta": 0,
+    "num_active_widths_delta": 0
+  }
+}
