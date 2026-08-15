@@ -1,0 +1,116 @@
+{
+  "phase": 4,
+  "description": "Minimal overfit training test",
+  "config": {
+    "vocab_size": 32,
+    "hidden_size": 32,
+    "num_layers": 3,
+    "width_choices": [
+      16,
+      32
+    ],
+    "expert_count": 4,
+    "top_k_experts": 2,
+    "max_depth": 3,
+    "dropout": 0.0,
+    "total_params": 231195,
+    "trainable_params": 200586
+  },
+  "training": {
+    "num_steps": 200,
+    "lr": 0.003,
+    "seed": 1337,
+    "initial_loss": 3.4701058864593506,
+    "final_loss": 0.006221521645784378,
+    "loss_reduction_pct": 99.84227213010847,
+    "final_accuracy": 0.9833333492279053,
+    "random_accuracy": 0.03125,
+    "loss_curve_first_10": [
+      3.4701058864593506,
+      3.3942859172821045,
+      3.3426313400268555,
+      3.2976081371307373,
+      3.2339026927948,
+      3.207237482070923,
+      3.171302080154419,
+      3.079454183578491,
+      3.0757944583892822,
+      2.9928393363952637
+    ],
+    "loss_curve_last_10": [
+      0.006745082791894674,
+      0.008158070966601372,
+      0.007648519240319729,
+      0.006934352684766054,
+      0.006711037363857031,
+      0.006485640071332455,
+      0.01366625726222992,
+      0.0059712836518883705,
+      0.006163355428725481,
+      0.0054733240976929665
+    ]
+  },
+  "final_routing": {
+    "avg_depth": 3.0,
+    "max_depth": 3,
+    "depth_fraction": 1.0,
+    "avg_width_multiplier": 0.9988667368888855,
+    "width_idx_distribution": {
+      "1": 128
+    },
+    "path_entropy": 0.8704512715339661,
+    "max_path_entropy": 1.0986122886681098,
+    "pathway_top1_distribution": {
+      "2": 128
+    },
+    "expert_call_count": {
+      "1": 71,
+      "2": 69,
+      "3": 61,
+      "0": 55
+    },
+    "num_experts": 4,
+    "top_k": 2,
+    "expert_utilization": 1.0
+  },
+  "final_grad_norms": {
+    "token_embedding": 0.008663321107104804,
+    "position_embedding": 0.0036191119811717623,
+    "embedding_dropout": 0.0,
+    "cot": 0.0,
+    "router": 0.19843840337599983,
+    "routing_regularizer": 0.0,
+    "blocks": 0.015071146693854953,
+    "moe": 0.006302686947297654,
+    "merger": 0.002046529203934753,
+    "final_norm": 0.004996384479600006,
+    "lm_head": 0.008663321107104804
+  },
+  "no_grad_subsystems": [
+    "embedding_dropout",
+    "cot",
+    "routing_regularizer"
+  ],
+  "by_design_no_grad": [
+    "routing_regularizer",
+    "embedding_dropout",
+    "cot"
+  ],
+  "real_no_grad_subsystems": [],
+  "no_grad_param_count": 46,
+  "all_finite": true,
+  "pathway_collapse": true,
+  "pathway_top1_distribution": {
+    "2": 128
+  },
+  "verdicts": {
+    "loss_decreased": true,
+    "loss_decreased_substantially": true,
+    "accuracy_improved": true,
+    "accuracy_above_random": true,
+    "all_finite": true,
+    "no_unexpected_zero_grad_subsystems": true,
+    "expert_utilization_ok": true
+  },
+  "overall_pass": true
+}

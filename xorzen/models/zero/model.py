@@ -469,12 +469,41 @@ class zeroModel(BaseModel):
             # during training (gradient flows through it) and hard 0/1 at inference.
             layer_mask = depth_mask[:, :, layer_idx]  # [B, T]  — soft during training
 
-            # Skip layer only at inference when all tokens have hard-0 mask.
-            if not self.training and not layer_mask.any():
-                if output_hidden_states:
-                    layer_outputs.append(hidden_states)
-                continue
+            # GENUINE SPARSE DEPTH (inference): if some tokens have mask=0,
+            # gather only the active tokens, run the block on them, and scatter
+            # back. Tokens with mask=0 are NOT processed by the block. This is
+            # the "gather active -> block -> scatter" pattern required by the
+            # conditional-compute principle; the previous "block(x) * mask + x
+            # * (1-mask)" computed everything then masked, which is forbidden.
+            #
+            # At training, we use the masked blend because the STE needs the
+            # block output in the autograd graph. The block is still skipped
+            # entirely if NO token is active.
+            if not self.training:
+                # Hard 0/1 mask at inference
+                active = (layer_mask > 0.5)
+                n_active = int(active.sum().item())
+                if n_active == 0:
+                    # No tokens active — skip block entirely
+                    if output_hidden_states:
+                        layer_outputs.append(hidden_states)
+                    continue
+                if n_active < batch_size * seq_length:
+                    # PARTIAL skip: use the block's forward_with_depth method,
+                    # which gathers active tokens, slices the routing decision,
+                    # runs the block on the active subset, and scatters back.
+                    hidden_states = block.forward_with_depth(
+                        x=hidden_states,
+                        depth_mask=active.float(),
+                        routing_decision=routing_decision,
+                        attention_mask=attention_mask,
+                    )
+                    if output_hidden_states:
+                        layer_outputs.append(hidden_states)
+                    continue
+                # else: all tokens active — fall through to normal path
 
+            # Training path (or all-active inference): compute block on full input
             # Apply gradient checkpointing if enabled
             if self.gradient_checkpointing and self.training:
                 def create_forward_func(block_module, routing_decision_obj, attention_mask_obj):
@@ -498,8 +527,7 @@ class zeroModel(BaseModel):
                     attention_mask=attention_mask
                 )
 
-            # Use depth mask to blend: when mask=1 take block output, when mask=0 keep input.
-            # This keeps depth_router in the computation graph (gradient flows through mask).
+            # Training: use STE mask blend (gradient flows through mask).
             # block_out is the FULL block output (already has its own internal residual),
             # so we select between block_out (active) and hidden_states (skipped) per token.
             layer_mask_3d = layer_mask.unsqueeze(-1)          # [B, T, 1]

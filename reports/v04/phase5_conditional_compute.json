@@ -1,0 +1,224 @@
+{
+  "results": {
+    "depth": {
+      "all_active": {
+        "mode": null,
+        "depth_mask_sum": 96.0,
+        "depth_mask_max_possible": 96.0,
+        "depth_fraction": 1.0,
+        "total_linear_calls": 31,
+        "total_flops": 8499200,
+        "active_layer_calls": 3,
+        "wall_clock_ms": 9.662952999860863
+      },
+      "none_active": {
+        "mode": "all_skip",
+        "depth_mask_sum": 32.0,
+        "depth_mask_max_possible": 96.0,
+        "depth_fraction": 0.3333333333333333,
+        "total_linear_calls": 15,
+        "total_flops": 3780608,
+        "active_layer_calls": 1,
+        "wall_clock_ms": 2.2081119986978592
+      },
+      "half_active": {
+        "mode": "half",
+        "depth_mask_sum": 64.0,
+        "depth_mask_max_possible": 96.0,
+        "depth_fraction": 0.6666666666666666,
+        "total_linear_calls": 31,
+        "total_flops": 6139904,
+        "active_layer_calls": 3,
+        "wall_clock_ms": 4.90040200020303
+      },
+      "last_layer_skip": {
+        "mode": "last_layer_only",
+        "depth_mask_sum": 64.0,
+        "depth_mask_max_possible": 96.0,
+        "depth_fraction": 0.6666666666666666,
+        "total_linear_calls": 23,
+        "total_flops": 6139904,
+        "active_layer_calls": 2,
+        "wall_clock_ms": 3.4322360006626695
+      }
+    },
+    "width": {
+      "16": {
+        "width": 16,
+        "pct_of_max": 25.0,
+        "fc1_input_shapes": [],
+        "fc2_input_shapes": [],
+        "analytical_flops": 32768
+      },
+      "32": {
+        "width": 32,
+        "pct_of_max": 50.0,
+        "fc1_input_shapes": [],
+        "fc2_input_shapes": [],
+        "analytical_flops": 65536
+      },
+      "64": {
+        "width": 64,
+        "pct_of_max": 100.0,
+        "fc1_input_shapes": [],
+        "fc2_input_shapes": [],
+        "analytical_flops": 131072
+      }
+    },
+    "pathway": {
+      "1": {
+        "top_k": 1,
+        "call_counts": {
+          "local": 1,
+          "low_rank": 0,
+          "ssm": 0
+        },
+        "num_pathways_called": 1
+      },
+      "2": {
+        "top_k": 2,
+        "call_counts": {
+          "local": 1,
+          "low_rank": 1,
+          "ssm": 0
+        },
+        "num_pathways_called": 2
+      },
+      "3": {
+        "top_k": 3,
+        "call_counts": {
+          "local": 1,
+          "low_rank": 1,
+          "ssm": 1
+        },
+        "num_pathways_called": 3
+      }
+    },
+    "moe": {
+      "1": {
+        "top_k": 1,
+        "num_experts": 4,
+        "experts_called": [
+          0
+        ],
+        "experts_NOT_called": [
+          1,
+          2,
+          3
+        ],
+        "call_counts": {
+          "0": 1
+        },
+        "grad_norms_per_expert": {
+          "0": 468.62164306640625,
+          "1": 0.0,
+          "2": 0.0,
+          "3": 0.0
+        },
+        "weights_sum_per_token": 1.0,
+        "expected_calls_per_expert": {
+          "0": 1,
+          "1": 0,
+          "2": 0,
+          "3": 0
+        }
+      },
+      "2": {
+        "top_k": 2,
+        "num_experts": 4,
+        "experts_called": [
+          0,
+          1
+        ],
+        "experts_NOT_called": [
+          2,
+          3
+        ],
+        "call_counts": {
+          "0": 1,
+          "1": 1
+        },
+        "grad_norms_per_expert": {
+          "0": 344.3406066894531,
+          "1": 344.3406066894531,
+          "2": 0.0,
+          "3": 0.0
+        },
+        "weights_sum_per_token": 1.0,
+        "expected_calls_per_expert": {
+          "0": 1,
+          "1": 1,
+          "2": 0,
+          "3": 0
+        }
+      },
+      "3": {
+        "top_k": 3,
+        "num_experts": 4,
+        "experts_called": [
+          0,
+          1,
+          2
+        ],
+        "experts_NOT_called": [
+          3
+        ],
+        "call_counts": {
+          "0": 1,
+          "1": 1,
+          "2": 1
+        },
+        "grad_norms_per_expert": {
+          "0": 189.44692993164062,
+          "1": 189.44692993164062,
+          "2": 189.44692993164062,
+          "3": 0.0
+        },
+        "weights_sum_per_token": 1.0,
+        "expected_calls_per_expert": {
+          "0": 1,
+          "1": 1,
+          "2": 1,
+          "3": 0
+        }
+      }
+    }
+  },
+  "verdicts": {
+    "depth": {
+      "half_less_than_all": true,
+      "none_less_than_half": true,
+      "half_reduction_pct": 27.75903614457831,
+      "none_reduction_pct": 55.51807228915663
+    },
+    "width": {
+      "f16_lt_f64": true,
+      "ratio_16_to_64": 0.25,
+      "ratio_32_to_64": 0.5,
+      "genuine_width_slicing": true
+    },
+    "pathway": {
+      "k1_only_local": true,
+      "k2_local_lowrank": true,
+      "k3_all": true,
+      "adversarial_only_ssm": true
+    },
+    "moe": {
+      "k1_exactly_K_experts": true,
+      "k1_uncalled_have_zero_grad": true,
+      "k1_called_have_nonzero_grad": true,
+      "k1_weights_sum_to_1": true,
+      "k2_exactly_K_experts": true,
+      "k2_uncalled_have_zero_grad": true,
+      "k2_called_have_nonzero_grad": true,
+      "k2_weights_sum_to_1": true,
+      "k3_exactly_K_experts": true,
+      "k3_uncalled_have_zero_grad": true,
+      "k3_called_have_nonzero_grad": true,
+      "k3_weights_sum_to_1": true
+    }
+  },
+  "overall_pass": true,
+  "pass_count": 20,
+  "total_count": 20
+}
