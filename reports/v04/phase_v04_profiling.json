@@ -1,0 +1,60 @@
+{
+  "description": "v0.4 profiling \u2014 identify bottlenecks after architecture changes",
+  "config": {
+    "hidden_size": 32,
+    "num_layers": 3,
+    "width_choices": [
+      16,
+      32
+    ],
+    "use_sliced_ffn": true
+  },
+  "subsystem_breakdown": {
+    "blocks": 15.845312000237755,
+    "moe": 10.392042999228579,
+    "merger": 10.154869998586946,
+    "router": 1.04687000020931
+  },
+  "bottleneck": "blocks",
+  "batch_scaling": {
+    "1": {
+      "time_ms": 6.285625999225886,
+      "time_per_token_ms": 0.39285162495161785
+    },
+    "4": {
+      "time_ms": 7.733335000011721,
+      "time_per_token_ms": 0.12083335937518314
+    },
+    "16": {
+      "time_ms": 10.55167699996673,
+      "time_per_token_ms": 0.04121748828112004
+    },
+    "64": {
+      "time_ms": 31.152703000770998,
+      "time_per_token_ms": 0.030422561524190428
+    }
+  },
+  "seq_scaling": {
+    "16": {
+      "time_ms": 8.287675000246963,
+      "time_per_token_ms": 0.1294949218788588
+    },
+    "64": {
+      "time_ms": 10.1780940003664,
+      "time_per_token_ms": 0.03975817968893125
+    },
+    "256": {
+      "time_ms": 36.380324001584086,
+      "time_per_token_ms": 0.03552766015779696
+    },
+    "1024": {
+      "time_ms": 409.3075860000681,
+      "time_per_token_ms": 0.09992860986329788
+    }
+  },
+  "old_vs_new": {
+    "old_ms": 7.931870999527746,
+    "new_ms": 7.576481999421958,
+    "delta_pct": -4.480519162842505
+  }
+}
