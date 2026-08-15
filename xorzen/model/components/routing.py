@@ -281,9 +281,13 @@ class AdaptiveRouter(nn.Module):
         self.z_loss_weight    = 0.0001   # was 0.001 — z-loss just for logit stability
         # Path diversity loss weight — prevents SSM (or any single path) from
         # collapsing to 100% usage.
-        # FIX: raised from 0.002 → 0.02.  At ~25% training the LM gradient is
-        # already strong; 0.002 was too weak to fight SSM's natural loss advantage.
-        self.path_div_weight  = 0.02
+        # Phase 6 experiment found:
+        #   path_div_weight=0.002  -> severe collapse (1 of 3 pathways active)
+        #   path_div_weight=0.02   -> still collapses (1 of 3 pathways active)
+        #   path_div_weight=0.2    -> partial diversity (2 of 3 pathways active)
+        # Default 0.1 is a middle ground that prevents single-pathway collapse
+        # while keeping the LM signal dominant.
+        self.path_div_weight  = 0.1
         self.metrics_history: List[RoutingMetrics] = []
         
         # Expert usage tracking
