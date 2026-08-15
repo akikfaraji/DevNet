@@ -1,0 +1,40 @@
+{
+  "model_size": "TINY_23K, H=64, 4 layers",
+  "train_steps": 200,
+  "train_loss_start": 4.868874549865723,
+  "train_loss_end": 0.006461253855377436,
+  "eval_pathway": {
+    "unique_paths_active": 2,
+    "pathway_distribution": [
+      0.103515625,
+      0.0,
+      0.896484375
+    ],
+    "n_pathways_configured": 3,
+    "collapsed": true
+  },
+  "eval_width": {
+    "unique_widths_active": 2,
+    "width_distribution": [
+      0.72265625,
+      0.27734375
+    ],
+    "n_widths_configured": 2,
+    "collapsed": false
+  },
+  "eval_depth": {
+    "active_per_layer": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "unique_depth_patterns": 1,
+    "max_patterns_possible": 16
+  },
+  "eval_expert": {
+    "unique_experts_active": 4,
+    "n_experts_configured": 4,
+    "top_k": 2
+  }
+}

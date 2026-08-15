@@ -449,7 +449,7 @@ class ModelConfig(BaseConfig):
     # Global compute budget in [0, 1]. The router conditions its decisions
     # on this scalar so the same trained model can run at different
     # quality/compute tradeoffs. 1.0 = full compute, 0.25 = quarter compute.
-    # See ``ComputeController`` in ``compute_controller.py``.
+    # See ``AdaptiveRouter.forward`` (cost-aware routing section).
     compute_budget: float = 1.0
     # Whether to enable adaptive halting (early exit per token). When True,
     # the model estimates per-token difficulty after each block and exits
@@ -523,6 +523,12 @@ class ModelConfig(BaseConfig):
     # the "cost-aware ComputeController" idea, but integrated into the
     # existing AdaptiveRouter (no separate dead module).
     cost_aware_routing: bool = True
+
+    # v0.5: Eval-time routing noise. Adds a small Gumbel noise to router
+    # logits at inference time to break the deterministic collapse where
+    # all tokens pick the same pathway/width/expert. Default 0.15.
+    # Set to 0.0 to disable (legacy v0.4 behavior — collapses at eval).
+    eval_routing_noise: float = 0.15
 
     # MoE configuration
     expert_count: int = 192

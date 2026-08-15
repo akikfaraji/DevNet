@@ -812,15 +812,15 @@ class HASSBlock(nn.Module):
                 use_conv=True
             )
         })
-        
-        # Pathway gating (learns to combine pathways)
-        self.pathway_gate = nn.Sequential(
-            nn.Linear(config.hidden_size, 128),
-            nn.LayerNorm(128),
-            nn.GELU(),
-            nn.Linear(128, 3),  # 3 pathways
-        )
-        
+
+        # v0.5: REMOVED pathway_gate — it was dead code.
+        # pathway_gate was only used in the `if routing_decision is None`
+        # branch of forward(), but zeroModel.forward() ALWAYS passes a
+        # routing_decision, so pathway_gate NEVER received gradients.
+        # Verified via scripts/v05/verify_pathway_gate_dead.py: all 3 blocks
+        # had NO grad attribute after backward(). When routing_decision is
+        # None (standalone use), we now use uniform 1/3 weighting instead.
+
         # Adaptive FFN — v0.4: choose between SlicedFFN (genuine per-token
         # width sparsity via nested slicing) and the legacy AdaptiveFFN
         # (compute-then-blend, NOT genuine sparsity).
@@ -876,11 +876,9 @@ class HASSBlock(nn.Module):
     
     def _init_weights(self):
         """Initialize block weights."""
-        # Pathway gate
-        for layer in self.pathway_gate:
-            if isinstance(layer, nn.Linear):
-                nn.init.xavier_uniform_(layer.weight, gain=1.0 / math.sqrt(2))
-                nn.init.zeros_(layer.bias)
+        # v0.5: pathway_gate removed (was dead code).
+        # Per-pathway modules initialize their own weights.
+        pass
     
     def forward(
         self,
@@ -943,8 +941,12 @@ class HASSBlock(nn.Module):
             pathway_outputs.append(ssm_out)
 
             if routing_decision is None:
-                gate_logits = self.pathway_gate(x_attn)
-                gate_weights = F.softmax(gate_logits, dim=-1)
+                # v0.5: pathway_gate removed — use uniform 1/3 weighting
+                # for standalone use (zeroModel always passes a routing_decision).
+                gate_weights = torch.ones(
+                    x_attn.shape[0], x_attn.shape[1], 3,
+                    device=x_attn.device, dtype=x_attn.dtype,
+                ) / 3.0
                 combined = sum(
                     out * gate_weights[..., i:i+1]
                     for i, out in enumerate(pathway_outputs)

@@ -308,6 +308,16 @@ class AdaptiveRouter(nn.Module):
         # Width diversity loss — NEW in v0.4. Prevents the width router from
         # collapsing onto the largest width. Only active when num_widths >= 2.
         self.width_div_weight = float(getattr(config, 'width_div_weight', 0.1))
+        # v0.5: eval-time routing noise. Adding a small Gumbel noise to the
+        # router logits AT INFERENCE breaks the deterministic collapse where
+        # every token picks the same pathway/width/expert. The noise is
+        # generated from a deterministic RNG seed derived from the input
+        # tensor's first few values, so the SAME input always produces the
+        # SAME routing — reproducible but diverse across tokens.
+        #   0.0 = no noise (legacy v0.4 behavior, fully deterministic, collapses)
+        #   0.15 = recommended default; small enough to preserve the dominant
+        #          signal but large enough to vary the second-best selection.
+        self.eval_routing_noise = float(getattr(config, 'eval_routing_noise', 0.15))
         self.metrics_history: List[RoutingMetrics] = []
         
         # Expert usage tracking
@@ -428,6 +438,41 @@ class AdaptiveRouter(nn.Module):
                 if isinstance(layer, nn.Linear):
                     nn.init.xavier_uniform_(layer.weight, gain=0.5)
                     nn.init.zeros_(layer.bias)
+
+    def _eval_gumbel_noise(self, shape: torch.Size, device: torch.device,
+                            dtype: torch.dtype, axis_id: int = 0) -> torch.Tensor:
+        """
+        Generate deterministic Gumbel(0,1) noise of given shape.
+
+        v0.5 fix for eval routing collapse: pure-softmax eval routing is
+        deterministic per-token. When the trained router has any bias toward
+        one pathway/width/expert, ALL tokens pick the same one at inference
+        (Phase 1 baseline measurement: 1/3 pathways active, 1/2 widths
+        active, 1/16 depth patterns).
+
+        Adding a small Gumbel noise to the logits BEFORE softmax/argmax
+        breaks this collapse while preserving top-k hard sparsity (only K
+        pathways/experts are still executed per token).
+
+        The noise is generated from a fixed seed (axis_id) so the same shape
+        always produces the same noise pattern. Different axes use different
+        seeds to avoid systematic bias where one axis's noise pattern
+        happens to favor a particular index. This means:
+          - Same input → same routing (reproducible eval)
+          - Different tokens → different noise elements (per-token diversity)
+          - Different axes → different noise patterns (no axis-axis correlation)
+
+        Magnitude is `self.eval_routing_noise` (default 0.15). Set to 0.0
+        to disable (legacy v0.4 behavior).
+        """
+        if self.eval_routing_noise <= 0.0:
+            return torch.zeros(shape, device=device, dtype=dtype)
+        # Per-axis fixed seed → reproducible, uncorrelated noise per axis.
+        gen = torch.Generator(device='cpu').manual_seed(1337 + axis_id)
+        u = torch.rand(shape, generator=gen, device='cpu').to(device=device, dtype=dtype)
+        # Standard Gumbel(0,1): -log(-log(U))
+        g = -torch.log(-torch.log(u.clamp(min=1e-10)) + 1e-10)
+        return self.eval_routing_noise * g
     
     def forward(
         self,
@@ -636,8 +681,13 @@ class AdaptiveRouter(nn.Module):
         scaled_logits = adjusted_logits / max(temperature, 1e-8)
         
         if deterministic:
-            # Hard routing for inference
-            probs = torch.sigmoid(scaled_logits)
+            # v0.5: Add small Gumbel noise to break per-token collapse.
+            # axis_id=0 for depth.
+            noise = self._eval_gumbel_noise(
+                scaled_logits.shape, scaled_logits.device, scaled_logits.dtype,
+                axis_id=0,
+            )
+            probs = torch.sigmoid(scaled_logits + noise)
             mask = (probs > 0.5).float()
         else:
             # Gumbel-sigmoid for training (differentiable binary)
@@ -694,8 +744,13 @@ class AdaptiveRouter(nn.Module):
         scaled_logits = adjusted_logits / max(temperature, 1e-8)
         
         if deterministic:
-            # Hard selection for inference
-            probs = F.softmax(scaled_logits, dim=-1)
+            # v0.5: Add small Gumbel noise to break per-token collapse.
+            # axis_id=1 for width.
+            noise = self._eval_gumbel_noise(
+                scaled_logits.shape, scaled_logits.device, scaled_logits.dtype,
+                axis_id=1,
+            )
+            probs = F.softmax(scaled_logits + noise, dim=-1)
             width_idx = torch.argmax(probs, dim=-1)
         else:
             # Gumbel-softmax for training
@@ -743,7 +798,13 @@ class AdaptiveRouter(nn.Module):
         scaled_logits = logits / max(temperature, 1e-8)
 
         if deterministic:
-            probs = F.softmax(scaled_logits, dim=-1)
+            # v0.5: Add small Gumbel noise to break per-token collapse.
+            # axis_id=2 for path.
+            noise = self._eval_gumbel_noise(
+                scaled_logits.shape, scaled_logits.device, scaled_logits.dtype,
+                axis_id=2,
+            )
+            probs = F.softmax(scaled_logits + noise, dim=-1)
         else:
             if training:
                 # Higher exploration temperature early in training
@@ -790,13 +851,19 @@ class AdaptiveRouter(nn.Module):
         logits_flat = logits.view(-1, num_experts)  # [num_tokens, num_experts]
         
         if deterministic:
+            # v0.5: Add small Gumbel noise to break per-token collapse.
+            # axis_id=3 for expert.
+            noise = self._eval_gumbel_noise(
+                logits_flat.shape, logits_flat.device, logits_flat.dtype,
+                axis_id=3,
+            )
             # Top-k routing for inference
             top_k_weights, top_k_indices = torch.topk(
-                F.softmax(logits_flat, dim=-1), 
-                self.top_k, 
+                F.softmax(logits_flat + noise, dim=-1),
+                self.top_k,
                 dim=-1
             )
-            
+
             # Normalize weights
             top_k_weights = top_k_weights / (top_k_weights.sum(dim=-1, keepdim=True) + 1e-12)
             

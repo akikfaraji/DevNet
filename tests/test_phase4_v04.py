@@ -338,27 +338,11 @@ def test_moe_restart_preserves_weights():
 # ============================================================
 # Phase 7: Compute budget tests
 # ============================================================
-
-def test_compute_controller_budget_affects_depth():
-    """ComputeController with lower budget should produce fewer active layers."""
-    from xorzen.model.components.compute_controller import ComputeController
-
-    torch.manual_seed(42)
-    cc = ComputeController(
-        hidden_dim=32, max_depth=4, width_choices=[16, 32],
-        num_paths=3, num_experts=4, top_k=2,
-        router_hidden_dim=16,
-    )
-    cc._pathway_top_k = 2
-    cc.eval()
-
-    x = torch.randn(2, 16, 32)
-    alloc_low = cc(x, compute_budget=0.10, training=False, deterministic=True)
-    alloc_high = cc(x, compute_budget=1.00, training=False, deterministic=True)
-
-    depth_low = float(alloc_low.depth_mask.sum().item())
-    depth_high = float(alloc_high.depth_mask.sum().item())
-    assert depth_low <= depth_high, f"budget=0.10 depth ({depth_low}) should be <= budget=1.0 depth ({depth_high})"
+# v0.5: The standalone ComputeController module was REMOVED (it was dead
+# code — never wired into zeroModel). Cost-aware routing now lives inside
+# AdaptiveRouter.forward(). The test below verifies the cost-aware logic
+# AT THE MODEL LEVEL (which is the only place it actually matters).
+# See test_cost_aware_routing_modulates_logits below.
 
 
 # ============================================================
