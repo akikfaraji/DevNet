@@ -201,6 +201,13 @@ class zeroModel(BaseModel):
         # Special initialization for specific layers
         self._init_special_layers()
         
+        # BUG-MEDIUM-2 fix: _init_weights re-initializes lm_head.weight
+        # (nn.Linear) with N(0, 0.02), which clobbers the padding row that
+        # nn.Embedding._init_weights correctly zeroed. When embeddings are
+        # tied, both share the same tensor, so we must re-zero the row here.
+        if config.tie_word_embeddings and getattr(config, 'pad_token_id', None) is not None:
+            self.token_embedding.weight.data[config.pad_token_id].zero_()
+        
         # ========== GRADIENT CHECKPOINTING ==========
         self.gradient_checkpointing = config.gradient_checkpointing
         if self.gradient_checkpointing:
@@ -597,9 +604,19 @@ class zeroModel(BaseModel):
         routing_loss = self.routing_regularizer(routing_decision)
         
         # Add router auxiliary losses (z_loss + lb_loss + path_div_loss from router internals)
+        # BUG-CRITICAL-1 fix: only add known scalar loss keys. The auxiliary
+        # dict also contains 'features' [B,T,D] and 'temperature' (scalar
+        # but not a loss). Adding features.mean() to the loss creates a
+        # spurious gradient that pushes the feature encoder toward zero.
+        _AUX_LOSS_KEYS = frozenset({
+            'load_balance_loss', 'router_z_loss',
+            'path_div_loss', 'width_div_loss',
+        })
         if hasattr(routing_decision, 'auxiliary') and routing_decision.auxiliary:
             for aux_key, aux_loss_val in routing_decision.auxiliary.items():
-                if isinstance(aux_loss_val, torch.Tensor) and aux_loss_val.requires_grad:
+                if (aux_key in _AUX_LOSS_KEYS
+                        and isinstance(aux_loss_val, torch.Tensor)
+                        and aux_loss_val.requires_grad):
                     routing_loss = routing_loss + aux_loss_val
         
         if routing_loss.numel() > 1:
