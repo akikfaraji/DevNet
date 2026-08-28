@@ -1,0 +1,163 @@
+[
+  {
+    "Claim": "Depth routing produces per-token depth variation at inference",
+    "Implementation Evidence": "See detail",
+    "Experiment": "All 16 tokens have identical depth pattern",
+    "Result": "FALSE",
+    "Remaining Problem": "Router collapsed despite eval_routing_noise=0.15"
+  },
+  {
+    "Claim": "Pathway routing executes only top-k pathways per token at inference",
+    "Implementation Evidence": "See detail",
+    "Experiment": "All tokens select exactly 2/3 pathways (mask correct). All 3 pathways called across the batch is expected with diverse routing.",
+    "Result": "PROVEN",
+    "Remaining Problem": "Per-token sparsity is PROVEN by mask structure. Per-batch coverage of all pathways is correct behavior, not a sparsity failure."
+  },
+  {
+    "Claim": "Width routing assigns different FFN widths to different tokens at inference",
+    "Implementation Evidence": "See detail",
+    "Experiment": "Only 1 width selected despite 3 choices",
+    "Result": "FALSE",
+    "Remaining Problem": "Width router collapsed"
+  },
+  {
+    "Claim": "Expert routing dispatches only top-k experts per token at inference",
+    "Implementation Evidence": "See detail",
+    "Experiment": "All tokens use exactly 2 experts (weight structure verified)",
+    "Result": "PROVEN",
+    "Remaining Problem": "All 4 experts used across batch \u2014 expected with diverse routing and 32 tokens"
+  },
+  {
+    "Claim": "Different tokens execute different amounts of computation",
+    "Implementation Evidence": "See detail",
+    "Experiment": "All 64 tokens identical profile",
+    "Result": "FALSE",
+    "Remaining Problem": "Router collapsed"
+  },
+  {
+    "Claim": "Training depth routing uses STE (soft mask, block computed for all tokens)",
+    "Implementation Evidence": "See detail",
+    "Experiment": "Depth mask is binary in training mode",
+    "Result": "PARTIAL",
+    "Remaining Problem": "STE should produce continuous mask values; binary suggests the Gumbel noise path may not be active"
+  },
+  {
+    "Claim": "Sequential, parallel (Blelloch), and chunked scans produce numerically identical outputs",
+    "Implementation Evidence": "See detail",
+    "Experiment": "All 5 sequence lengths match within 1e-5: [('T=8', 2.9802322387695312e-08), ('T=32', 5.960464477539063e-08), ('T=64', 5.960464477539063e-08), ('T=128', 5.960464477539063e-08), ('T=256', 5.960464477539063e-08)]",
+    "Result": "PROVEN",
+    "Remaining Problem": "Max diff across all tests: {max(v[\"seq_par_max_diff\"] for v in results.values()):.2e}"
+  },
+  {
+    "Claim": "ZOH discretization matches independent reference and produces stable A_bar in (0,1)",
+    "Implementation Evidence": "See detail",
+    "Experiment": "Max diff vs reference: 0.00e+00, A_bar stable: True",
+    "Result": "PROVEN",
+    "Remaining Problem": "ZOH vs first-order diff: 0.1157 (expected to be non-trivial)"
+  },
+  {
+    "Claim": "All SSM parameters (A_log, B_proj, C_proj, dt_proj, gate, conv) receive gradients through the scan",
+    "Implementation Evidence": "See detail",
+    "Experiment": "All 17 parameters have non-zero gradients",
+    "Result": "PROVEN",
+    "Remaining Problem": "Params: ['A_log', 'dt_proj.weight', 'dt_proj.bias', 'B_proj.weight', 'B_proj.bias', 'C_proj.weight', 'C_proj.bias', 'D_proj.weight', 'D_proj.bias', 'conv.weight', 'conv.bias', 'gate_proj.weight', 'gate_proj.bias', 'ln_input.weight', 'ln_input.bias', 'ln_state.weight', 'ln_state.bias']"
+  },
+  {
+    "Claim": "Local attention with causal=True prevents future-token leakage",
+    "Implementation Evidence": "See detail",
+    "Experiment": "Pre-corruption diff=0.00e+00 (no leakage), post-corruption diff=84.0939 (sees corruption)",
+    "Result": "PROVEN",
+    "Remaining Problem": "Window=128, T=16"
+  },
+  {
+    "Claim": "Causal attention handles small window sizes correctly",
+    "Implementation Evidence": "See detail",
+    "Experiment": "All window sizes (1, 2, 4) produce finite, correctly-shaped output",
+    "Result": "PROVEN",
+    "Remaining Problem": "Tested with T=8, various window sizes"
+  },
+  {
+    "Claim": "All routing probabilities (path, expert, width) form valid simplexes",
+    "Implementation Evidence": "See detail",
+    "Experiment": "path: sum_err\u22641e-5, expert: sum_err\u22641e-5, width: sum_err\u22641e-5",
+    "Result": "PROVEN",
+    "Remaining Problem": "All probabilities non-negative and sum to 1"
+  },
+  {
+    "Claim": "Inference routing is deterministic (same input \u2192 same routing)",
+    "Implementation Evidence": "See detail",
+    "Experiment": "All 4 routing axes produce identical results on repeated forward passes",
+    "Result": "PROVEN",
+    "Remaining Problem": "Eval mode uses deterministic Gumbel noise (fixed seed per axis)"
+  },
+  {
+    "Claim": "_estimate_active_params accurately measures actually-executed parameters",
+    "Implementation Evidence": "See detail",
+    "Experiment": "Estimate=1416335, total=1008015. Method is a heuristic based on routing metadata, not an instrumentation-based measurement.",
+    "Result": "FALSE",
+    "Remaining Problem": "Does NOT account for: pathway sparsity (assumes all 3), width sparsity (ignores selected width), actual parameter execution. It multiplies avg_depth * params_per_block but params_per_block includes all pathways. Useful as a rough proxy, not a precise measurement."
+  },
+  {
+    "Claim": "Instrumented parameter execution measurement (actual gradient flow)",
+    "Implementation Evidence": "See detail",
+    "Experiment": "Touched 899309/908142 trainable params (99.0%). Heuristic estimated 1359039.",
+    "Result": "EMPIRICAL",
+    "Remaining Problem": "Per-module: {'token_embedding': 3.3905553817749023, 'position_embedding': 1.9269986152648926, 'router': 4.526366950753186, 'blocks': 24.577817864380638, 'moe': 0.011959609808400273, 'merger': 0.9677245360671805, 'final_norm': 0.05860205739736557}. Note: test_mode uses dummy expert, so expert params are not representative of production."
+  },
+  {
+    "Claim": "Inference routing produces diverse decisions across all 4 axes",
+    "Implementation Evidence": "See detail",
+    "Experiment": "2/4 axes collapsed: {'pathway': False, 'width': True, 'depth': True, 'expert': False}",
+    "Result": "PARTIAL",
+    "Remaining Problem": "Partial collapse on untrained model. Expected to improve with training."
+  },
+  {
+    "Claim": "SPPQ produces correct QAT with valid gradients",
+    "Implementation Evidence": "See detail",
+    "Experiment": "Cannot import SPPQ: cannot import name 'ProgressiveSchedule' from 'xorzen.utils.sppq' (/home/z/my-project/DevNet/xorzen/utils/sppq.py)",
+    "Result": "UNTESTED",
+    "Remaining Problem": "Module may be missing or broken"
+  },
+  {
+    "Claim": "Expert sharding: LRU cache correctly evicts least-recently-used experts",
+    "Implementation Evidence": "See detail",
+    "Experiment": "LRU eviction order verified: 0 evicted before 2, 2 evicted before 1. Stats: {'capacity': 3, 'current_size': 3, 'hits': 4, 'misses': 0, 'evictions': 2, 'hit_rate': 1.0}",
+    "Result": "PROVEN",
+    "Remaining Problem": "test_mode uses dummy expert (no disk I/O). Memory estimate: {'params_per_expert': 49152, 'mb_per_expert': 0.1875, 'total_disk_mb': 1.5, 'cached_mb': 0.5625, 'savings_mb': 0.9375}. Full disk sharding requires non-test mode and persistent storage."
+  },
+  {
+    "Claim": "Scaling-law implementation matches stated equations; 12B>60B hypothesis is experimentally supported",
+    "Implementation Evidence": "See detail",
+    "Experiment": "Scaling doc exists: True, has 12B/60B claim: True, has equations: True, has experimental data: False",
+    "Result": "UNTESTED",
+    "Remaining Problem": "Scaling code files: []. The 12B>60B claim requires large-scale training experiments that cannot be verified in this environment. The claim is aspirational/projected based on scaling-law extrapolation, not proven by completed experiments. Code-level verification: scaling equations exist in documentation but may not have corresponding implementation code (scaling_law.md is a report, not executable code)."
+  },
+  {
+    "Claim": "Tokenizer encode\u2192decode roundtrip preserves original text",
+    "Implementation Evidence": "See detail",
+    "Experiment": "No Python tokenizer class found. Tokenizer exists as HuggingFace JSON vocab (65k tokens) with special_tokens.py, but no encode/decode API was found in xorzen.tokenizer.",
+    "Result": "UNTESTED",
+    "Remaining Problem": "The model uses sentencepiece (imported in __init__) for tokenization during training, but the wrapper API is not implemented."
+  },
+  {
+    "Claim": "SPPQ target_bits affects quantization precision",
+    "Implementation Evidence": "See detail",
+    "Experiment": "4-bit error=0.004364, 8-bit error=0.000239, 16-bit error=0.000001, 32-bit error=0.000000. Monotonic decrease.",
+    "Result": "PROVEN",
+    "Remaining Problem": "Measured on nn.Linear(64,128) with uniform random weights. Lower bits = more quantization error."
+  },
+  {
+    "Claim": "SPPQ gradients flow through quantized weights",
+    "Implementation Evidence": "See detail",
+    "Experiment": "4-bit and 8-bit: weight.grad is non-zero after backward through quantized model.",
+    "Result": "PROVEN",
+    "Remaining Problem": "QAT with STE or straight-through gradient estimator."
+  },
+  {
+    "Claim": "SPPQ does NOT reduce inference memory (weights stay float32)",
+    "Implementation Evidence": "See detail",
+    "Experiment": "Memory before=32768 bytes, after=32768 bytes, reduction=0.0%. Weights remain torch.float32 after apply_quantization.",
+    "Result": "PROVEN",
+    "Remaining Problem": "This is QAT-only (fake quantization). Native int8 storage would be needed for inference savings. Documentation correctly states 0% memory reduction."
+  }
+]

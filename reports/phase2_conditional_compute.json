@@ -1,0 +1,38 @@
+{
+  "depth_conditional": {
+    "claim": "Depth routing produces per-token depth variation at inference",
+    "classification": "FALSE",
+    "evidence": "All 16 tokens have identical depth pattern",
+    "detail": "Router collapsed despite eval_routing_noise=0.15"
+  },
+  "pathway_conditional": {
+    "claim": "Pathway routing executes only top-k pathways per token at inference",
+    "classification": "PROVEN",
+    "evidence": "All tokens select exactly 2/3 pathways (mask correct). All 3 pathways called across the batch is expected with diverse routing.",
+    "detail": "Per-token sparsity is PROVEN by mask structure. Per-batch coverage of all pathways is correct behavior, not a sparsity failure."
+  },
+  "width_conditional": {
+    "claim": "Width routing assigns different FFN widths to different tokens at inference",
+    "classification": "FALSE",
+    "evidence": "Only 1 width selected despite 3 choices",
+    "detail": "Width router collapsed"
+  },
+  "expert_conditional": {
+    "claim": "Expert routing dispatches only top-k experts per token at inference",
+    "classification": "PROVEN",
+    "evidence": "All tokens use exactly 2 experts (weight structure verified)",
+    "detail": "All 4 experts used across batch \u2014 expected with diverse routing and 32 tokens"
+  },
+  "per_token_distribution": {
+    "claim": "Different tokens execute different amounts of computation",
+    "classification": "FALSE",
+    "evidence": "All 64 tokens identical profile",
+    "detail": "Router collapsed"
+  },
+  "training_depth_no_savings": {
+    "claim": "Training depth routing uses STE (soft mask, block computed for all tokens)",
+    "classification": "PARTIAL",
+    "evidence": "Depth mask is binary in training mode",
+    "detail": "STE should produce continuous mask values; binary suggests the Gumbel noise path may not be active"
+  }
+}

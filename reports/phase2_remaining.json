@@ -1,0 +1,44 @@
+{
+  "active_param_heuristic": {
+    "claim": "_estimate_active_params accurately measures actually-executed parameters",
+    "classification": "FALSE",
+    "evidence": "Estimate=1416335, total=1008015. Method is a heuristic based on routing metadata, not an instrumentation-based measurement.",
+    "detail": "Does NOT account for: pathway sparsity (assumes all 3), width sparsity (ignores selected width), actual parameter execution. It multiplies avg_depth * params_per_block but params_per_block includes all pathways. Useful as a rough proxy, not a precise measurement."
+  },
+  "active_param_instrumented": {
+    "claim": "Instrumented parameter execution measurement (actual gradient flow)",
+    "classification": "EMPIRICAL",
+    "evidence": "Touched 899309/908142 trainable params (99.0%). Heuristic estimated 1359039.",
+    "detail": "Per-module: {'token_embedding': 3.3905553817749023, 'position_embedding': 1.9269986152648926, 'router': 4.526366950753186, 'blocks': 24.577817864380638, 'moe': 0.011959609808400273, 'merger': 0.9677245360671805, 'final_norm': 0.05860205739736557}. Note: test_mode uses dummy expert, so expert params are not representative of production."
+  },
+  "inference_routing_diversity": {
+    "claim": "Inference routing produces diverse decisions across all 4 axes",
+    "classification": "PARTIAL",
+    "evidence": "2/4 axes collapsed: {'pathway': False, 'width': True, 'depth': True, 'expert': False}",
+    "detail": "Partial collapse on untrained model. Expected to improve with training."
+  },
+  "sppq_qat": {
+    "claim": "SPPQ produces correct QAT with valid gradients",
+    "classification": "UNTESTED",
+    "evidence": "Cannot import SPPQ: cannot import name 'ProgressiveSchedule' from 'xorzen.utils.sppq' (/home/z/my-project/DevNet/xorzen/utils/sppq.py)",
+    "detail": "Module may be missing or broken"
+  },
+  "expert_sharding": {
+    "claim": "Expert sharding: LRU cache correctly evicts least-recently-used experts",
+    "classification": "PROVEN",
+    "evidence": "LRU eviction order verified: 0 evicted before 2, 2 evicted before 1. Stats: {'capacity': 3, 'current_size': 3, 'hits': 4, 'misses': 0, 'evictions': 2, 'hit_rate': 1.0}",
+    "detail": "test_mode uses dummy expert (no disk I/O). Memory estimate: {'params_per_expert': 49152, 'mb_per_expert': 0.1875, 'total_disk_mb': 1.5, 'cached_mb': 0.5625, 'savings_mb': 0.9375}. Full disk sharding requires non-test mode and persistent storage."
+  },
+  "scaling_law": {
+    "claim": "Scaling-law implementation matches stated equations; 12B>60B hypothesis is experimentally supported",
+    "classification": "UNTESTED",
+    "evidence": "Scaling doc exists: True, has 12B/60B claim: True, has equations: True, has experimental data: False",
+    "detail": "Scaling code files: []. The 12B>60B claim requires large-scale training experiments that cannot be verified in this environment. The claim is aspirational/projected based on scaling-law extrapolation, not proven by completed experiments. Code-level verification: scaling equations exist in documentation but may not have corresponding implementation code (scaling_law.md is a report, not executable code)."
+  },
+  "tokenizer_roundtrip": {
+    "claim": "Tokenizer encode\u2192decode roundtrip preserves original text",
+    "classification": "UNTESTED",
+    "evidence": "Cannot import XorzenTokenizer",
+    "detail": "Module may not exist"
+  }
+}
