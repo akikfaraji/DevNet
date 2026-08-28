@@ -37,6 +37,12 @@ try:
     TOKENIZERS_AVAILABLE = True
 except ImportError:
     TOKENIZERS_AVAILABLE = False
+    # Provide stub so the module can still be imported even without the
+    # `tokenizers` library (e.g. when only training the model, not the
+    # tokenizer).
+    class _StubTokenizer:
+        pass
+    Tokenizer = _StubTokenizer
 
 logger = get_logger()
 

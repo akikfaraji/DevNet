@@ -1,0 +1,110 @@
+[
+  {
+    "test_id": "BUG-CRITICAL-1",
+    "claim": "'features' tensor [B,T,D] from router is added to routing_loss, creating spurious gradient",
+    "classification": "BUG",
+    "severity": "CRITICAL",
+    "reproduced": true,
+    "evidence": "features shape=(2, 8, 128), requires_grad=True, is_scalar=False",
+    "details": "The 'features' tensor is [B,T,D] with requires_grad=True. model.py lines 600-603 add it to routing_loss. The .mean() guard at line 605 converts to scalar but injects a spurious gradient pushing the feature encoder output toward zero."
+  },
+  {
+    "test_id": "BUG-CRITICAL-2",
+    "claim": "Disk-sharded experts never receive optimizer updates \u2014 effectively frozen during training",
+    "classification": "BUG",
+    "severity": "CRITICAL",
+    "reproduced": true,
+    "evidence": "param_names=[], has_expert_params=False, test_mode=False",
+    "details": "In sharded mode (test_mode=False), ShardedExpertFabric loads experts from disk into plain objects, not nn.Module. They never appear in model.parameters() and thus never receive optimizer updates. Only test_mode=True registers a dummy_expert as a proper submodule."
+  },
+  {
+    "test_id": "BUG-CRITICAL-3",
+    "claim": "forward_with_depth concatenates tokens across batch/seq boundaries, corrupting causal attention and SSM state",
+    "classification": "BUG",
+    "severity": "CRITICAL",
+    "reproduced": true,
+    "evidence": "uses_flatten=True, passes_attention_mask=True, output shape=(2, 16, 64)",
+    "details": "Confirmed by source: forward_with_depth flattens all active tokens with x[active_mask].unsqueeze(0), destroying batch boundaries. LocalAttentionPathway and SSMPathway then treat them as contiguous, causing cross-batch attention leakage and SSM state contamination. NOTE: This code path only runs at INFERENCE (not self.training), so it does not affect training correctness, only inference correctness."
+  },
+  {
+    "test_id": "BUG-CRITICAL-4",
+    "claim": "Disk-sharded experts are invisible to checkpoint save/load \u2014 weights lost on restore",
+    "classification": "BUG",
+    "severity": "CRITICAL",
+    "reproduced": true,
+    "evidence": "state_dict keys=[], has_expert_keys=False",
+    "details": "ShardedExpertFabric.state_dict() contains no expert weights in sharded mode. CheckpointManager.save() uses model.state_dict(), so expert weights are never saved. On checkpoint restore, experts reinitialize from scratch. NOTE: This only affects shard_experts=True mode (production). test_mode=True properly registers the dummy expert."
+  },
+  {
+    "test_id": "BUG-MEDIUM-1",
+    "claim": "SlicedFFN has no STE \u2014 width router receives zero gradient from LM loss through the forward path",
+    "classification": "BUG",
+    "severity": "MEDIUM",
+    "reproduced": true,
+    "evidence": "width_probs.grad is None: True, grad norm: 0.000000",
+    "details": "SlicedFFN.forward() line 169 returns y_hard without any STE connection to width_probs. The gradient on width_probs is zero. Width router is trained ONLY by auxiliary diversity/entropy losses, not by the main LM loss. This may cause poor width routing quality."
+  },
+  {
+    "test_id": "BUG-MEDIUM-2",
+    "claim": "_init_weights clobbers the padding row of tied embedding weights via the nn.Linear branch",
+    "classification": "BUG",
+    "severity": "MEDIUM",
+    "reproduced": true,
+    "evidence": "pad_row is_zero: False, same_tensor: True, pad_row norm: 0.154035",
+    "details": "self.apply(_init_weights) runs on all submodules. The nn.Linear branch (lm_head) re-initializes ALL rows including the padding row, overwriting the zero that nn.Embedding set. Impact: pad_token_id produces non-zero logits at generation time."
+  },
+  {
+    "test_id": "BUG-MEDIUM-3",
+    "claim": "LowRankGlobalPathway has no causal mask \u2014 future tokens leak during training",
+    "classification": "DESIGN LIMITATION",
+    "severity": "MEDIUM",
+    "reproduced": true,
+    "evidence": "has_causal_mask: False, has_softmax: True",
+    "details": "The LowRankGlobalPathway uses softmax(QK^T) without any causal masking. During training (teacher forcing), future target tokens are visible. At inference, future tokens don't exist, creating a train/inference mismatch. The pathway name 'global' suggests this may be intentional, but it contaminates causal training signal when pathway_top_k >= 2."
+  },
+  {
+    "test_id": "DESIGN-1",
+    "claim": "Pad tokens receive non-zero hidden states and flow through router/MoE, wasting compute and polluting routing stats",
+    "classification": "DESIGN LIMITATION",
+    "severity": "LOW",
+    "reproduced": true,
+    "evidence": "path_entropy: 1.0942, expert_entropy: 1.3777, all pad tokens still routed",
+    "details": "Position embeddings give pad tokens non-zero hidden states, which then flow through the router and MoE. The LM loss correctly ignores pad positions via ignore_index, but routing/load-balance losses receive noise from pad token expert assignments."
+  },
+  {
+    "test_id": "DESIGN-2",
+    "claim": "SSM D parameter initialized as randn(std=1) instead of ones \u2014 potentially unstable early training",
+    "classification": "UNTESTED",
+    "severity": "LOW",
+    "reproduced": false,
+    "evidence": "Exception: 'HASSBlock' object has no attribute 'pathway_fns'\nTraceback (most recent call last):\n  File \"/home/z/my-project/DevNet/scripts/audit_phase3/reproduce_bugs.py\", line 548, in test_ssm_D_initialization\n    for pw in block.pathway_fns.values():\n              ^^^^^^^^^^^^^^^^^\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/nn/modules/module.py\", line 1967, in __getattr__\n    raise AttributeError(\nAttributeError: 'HASSBlock' object has no attribute 'pathway_fns'. Did you mean: 'pathways'?\n",
+    "details": ""
+  },
+  {
+    "test_id": "DESIGN-3",
+    "claim": "Two SSM implementations use different Taylor expansion orders for ZOH discretization",
+    "classification": "DESIGN LIMITATION",
+    "severity": "LOW",
+    "reproduced": true,
+    "evidence": "ssm.py first_order: True, ssm_scan.py second_order: True",
+    "details": "ssm.py line 165: '1 + z / 2' (first-order). ssm_scan.py line 102: '1.0 + z / 2.0 + (z * z) / 6.0' (second-order). Both are convergent but inconsistent. The ssm_scan.py version is more accurate."
+  },
+  {
+    "test_id": "BUG-MEDIUM-4",
+    "claim": "End-to-end: width_router parameters receive zero gradient from LM loss when use_sliced_ffn=True",
+    "classification": "BUG",
+    "severity": "MEDIUM",
+    "reproduced": true,
+    "evidence": "router.width_router.0.weight: grad_norm=0.00000000\n    router.width_router.0.bias: grad_norm=0.00000000\n    router.width_router.1.weight: grad_norm=0.00000000\n    router.width_router.1.bias: grad_norm=0.00000000\n    router.width_router.3.weight: grad_norm=0.00000000\n    router.width_router.3.bias: grad_norm=0.00000000",
+    "details": "With all auxiliary losses disabled and use_sliced_ffn=True, the width router parameters receive zero gradient from the LM loss. The only gradient signal comes from auxiliary losses (diversity, entropy)."
+  },
+  {
+    "test_id": "NO-ISSUE-1",
+    "claim": "Depth router receives proper gradient from LM loss through STE",
+    "classification": "NO ISSUE",
+    "severity": "INFO",
+    "reproduced": true,
+    "evidence": "router.depth_router.0.weight: 0.002580\n    router.depth_router.0.bias: 0.000247\n    router.depth_router.1.weight: 0.000049\n    router.depth_router.1.bias: 0.000035\n    router.depth_router.3.weight: 0.002242\n    router.depth_router.3.bias: 0.000065",
+    "details": "Depth router STE correctly passes gradient from LM loss to depth router params."
+  }
+]
