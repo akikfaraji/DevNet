@@ -145,26 +145,26 @@ class QuantizationMetrics:
     overall_memory_savings: float = 1.0
     average_quantization_error: float = 0.0
     stability_distribution: Dict[ParameterStability, int] = field(default_factory=dict)
-    
+    _total_bits_weighted: float = 0.0  # Sum of (param_count * bits) for accurate average
+
     def update(self, state: QuantizationState):
         """Update metrics with new state."""
-        self.total_parameters += math.prod(state.parameter_shape)
+        n = math.prod(state.parameter_shape)
+        self.total_parameters += n
+        self._total_bits_weighted += n * state.bits
         if state.bits < 32:
-            self.quantized_parameters += math.prod(state.parameter_shape)
+            self.quantized_parameters += n
         
         # Update distribution
         if state.stability_level not in self.stability_distribution:
             self.stability_distribution[state.stability_level] = 0
-        self.stability_distribution[state.stability_level] += math.prod(state.parameter_shape)
+        self.stability_distribution[state.stability_level] += n
     
     def compute_final(self, total_states: int):
-        """Compute final metrics."""
+        """Compute final metrics from accumulated per-state data."""
         if self.total_parameters > 0:
-            self.average_bits = (
-                (self.quantized_parameters * self.average_bits +
-                 (self.total_parameters - self.quantized_parameters) * 32)
-                / self.total_parameters
-            )
+            # Weighted average: sum(param_count * bits) / total_params
+            self.average_bits = self._total_bits_weighted / self.total_parameters
             self.overall_compression = 32.0 / self.average_bits
             self.overall_memory_savings = self.overall_compression
     
@@ -1537,10 +1537,37 @@ class SPPQ:
             self._log_statistics()
     
     def _update_target_bits(self, target_bits: int):
-        """Update target bit width for all parameters."""
-        # This is handled by the engine based on stability
-        # The scheduler just provides the global target
-        pass
+        """Update target bit width for all parameters.
+
+        The progressive scheduler provides a global target bit-width.
+        We apply it to every tracked parameter whose current bit-width
+        exceeds the target AND whose stability score is above a threshold
+        (unstable parameters are left at higher precision).
+        """
+        for name, state in self.engine.quantization_states.items():
+            if state.status == QuantizationStatus.FROZEN:
+                continue
+            # Only reduce; never increase a parameter's bits via the schedule.
+            if state.bits <= target_bits:
+                continue
+            # Stability-gated: require stability >= 0.7 before lowering bits.
+            if state.stability_score < 0.7:
+                continue
+            # Record original bits for metrics update.
+            old_n = math.prod(state.parameter_shape)
+            self.engine.quantization_metrics._total_bits_weighted -= old_n * state.bits
+            if state.bits < 32:
+                self.engine.quantization_metrics.quantized_parameters -= old_n
+            # Apply the new target.
+            state.bits = target_bits
+            # Update metrics.
+            self.engine.quantization_metrics._total_bits_weighted += old_n * target_bits
+            if target_bits < 32:
+                self.engine.quantization_metrics.quantized_parameters += old_n
+            # Recompute final so downstream reads are correct.
+            self.engine.quantization_metrics.compute_final(
+                len(self.engine.quantization_states)
+            )
     
     def _log_statistics(self):
         """Log SPPQ statistics."""

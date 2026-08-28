@@ -17,6 +17,7 @@ import warnings
 from xorzen.config import ModelConfig
 from xorzen.utils.logger import get_logger
 from xorzen.utils.math_utils import TensorStability, InformationTheory, RoutingMathematics
+from xorzen.model.components.load_balance import load_balance_loss_switch
 
 logger = get_logger()
 
@@ -26,14 +27,13 @@ logger = get_logger()
 def load_balance_loss(router_probs: torch.Tensor, expert_indices: torch.Tensor, num_experts: int) -> torch.Tensor:
     """
     Load balancing auxiliary loss from Switch Transformer.
-    Prevents router from collapsing (sending all tokens to same expert).
+
+    Delegates to the canonical implementation in load_balance.py which
+    correctly normalizes f_e to sum to 1 (dividing by N*K, not N).
+
+    For uniform top-K routing this returns L=1 (balanced) not L=K.
     """
-    B, S, E = router_probs.shape
-    dispatch = torch.zeros(B, S, E, device=router_probs.device)
-    dispatch.scatter_(-1, expert_indices, 1.0)
-    f = dispatch.mean(dim=[0, 1])  # fraction per expert
-    p = router_probs.mean(dim=[0, 1])  # mean probability per expert
-    return num_experts * (f * p).sum()
+    return load_balance_loss_switch(router_probs, expert_indices, num_experts)
 
 def router_z_loss(router_logits: torch.Tensor) -> torch.Tensor:
     """
@@ -639,6 +639,8 @@ class AdaptiveRouter(nn.Module):
         
         # Compute auxiliary losses during training
         if training and not deterministic:
+            # load_balance_loss now correctly delegates to
+            # load_balance_loss_switch which normalizes f by N*K.
             lb_loss = load_balance_loss(expert_probs, expert_indices, self.num_experts)
             z_loss_val = router_z_loss(expert_logits)
             # Path diversity: penalise routing collapse onto a single pathway
@@ -1088,7 +1090,22 @@ class AdaptiveRouter(nn.Module):
         return F.mse_loss(predicted, target)
     
     def _compute_balancing_loss(self, decision: RoutingDecision) -> torch.Tensor:
-        """Load balancing loss for experts."""
+        """Load balancing loss for experts.
+
+        .. deprecated:: v0.4
+            This CV-based formula is INCORRECT for Switch Transformer
+            load balancing.  The canonical Switch formula is now used via
+            ``load_balance_loss()`` (module-level) which delegates to
+            :func:`load_balance_loss_switch` in ``load_balance.py``.
+            This method is kept only for backward-compat; do NOT call it
+            from production code.
+        """
+        warnings.warn(
+            "_compute_balancing_loss uses CV formula, not Switch. "
+            "Use load_balance_loss() (module-level) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         batch_size, seq_len, num_experts = decision.expert_probs.shape
         
         # Reshape
