@@ -1,4 +1,4 @@
-# DevNet — XorZen Framework & FRAZIYM AI Ecosystem
+# XorZen Framework & AI Ecosystem
 
 <p align="center">
   <strong>Advanced Hybrid Transformer × MoE × SSM Framework</strong><br>
