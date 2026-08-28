@@ -21,8 +21,8 @@ GOAL:
 DO NOT trust PARAM_COUNT labels — proven wrong by 58–70 % at large scale.
 
 OUTPUTS:
-  /home/z/my-project/xorzen_dev/reports/scaling/scaling_law.json
-  /home/z/my-project/xorzen_dev/reports/scaling/scaling_law.md
+  /reports/scaling/scaling_law.json
+  /reports/scaling/scaling_law.md
 """
 from __future__ import annotations
 
