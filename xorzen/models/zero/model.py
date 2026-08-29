@@ -127,6 +127,7 @@ class zeroModel(BaseModel):
         # and avoids gradient noise from an untrained reasoning module.
         # Enable CoT for fine-tuning by calling model.enable_cot().
         self.cot = InternalLatentCoT(config)
+        self._cot_enabled = False  # CoT disabled during pre-training
         self._freeze_cot()  # Freeze for pre-training
         logger.info("core", f"Internal CoT: {config.cot_components} components x {config.cot_dim} dim = {config.cot_dim * config.cot_components} total (frozen for pre-training)")
         
@@ -322,6 +323,7 @@ class zeroModel(BaseModel):
 
     def _freeze_cot(self):
         """Freeze all CoT parameters for pre-training."""
+        self._cot_enabled = False
         for param in self.cot.parameters():
             param.requires_grad = False
 
@@ -331,6 +333,7 @@ class zeroModel(BaseModel):
         Call this after pre-training completes to unfreeze CoT parameters
         and enable CoT injection into the hidden states.
         """
+        self._cot_enabled = True
         for param in self.cot.parameters():
             param.requires_grad = True
         logger.info("core", "CoT enabled for fine-tuning")
@@ -447,10 +450,13 @@ class zeroModel(BaseModel):
         # We still pass a zeroed cot_vector_seq so downstream components (merger,
         # router) keep their expected input shapes without receiving any signal.
         cot_total_dim = self.config.cot_dim * self.config.cot_components
-        cot_vector_seq = torch.zeros(
-            batch_size, seq_length, cot_total_dim,
-            device=device, dtype=hidden_states.dtype
-        )  # [B, T, cot_dim] — zeros, no gradient
+        if self._cot_enabled:
+            cot_vector_seq, _ = self.cot(hidden_states)
+        else:
+            cot_vector_seq = torch.zeros(
+                batch_size, seq_length, cot_total_dim,
+                device=device, dtype=hidden_states.dtype
+            )  # [B, T, cot_dim] — zeros, no gradient
         
         # ========== STEP 3: ADAPTIVE ROUTING ==========
         # Router makes ALL decisions for the forward pass
@@ -636,17 +642,20 @@ class zeroModel(BaseModel):
                 expert_weights_flat
             )
         
-        # CoT consistency loss zeroed during pre-training
-        cot_consistency_loss = torch.tensor(0.0, device=device)
+        # CoT consistency loss: only computed when CoT is enabled
+        if self._cot_enabled:
+            cot_consistency_loss = self._compute_cot_consistency_loss(cot_vector_seq)
+        else:
+            cot_consistency_loss = torch.tensor(0.0, device=device)
         
         # Accumulate auxiliary losses — but ONLY if LM loss exists.
         # The aux weights in config are now 0.0001 so they won't drown LM signal.
         # We track lm_loss separately on ModelOutput for debugging.
         lm_loss = loss  # pure cross-entropy before aux
         if loss is not None:
-            loss = loss + routing_loss + load_balance_loss
+            loss = loss + routing_loss + load_balance_loss + cot_consistency_loss
         else:
-            loss = routing_loss + load_balance_loss
+            loss = routing_loss + load_balance_loss + cot_consistency_loss
         
         if loss is not None and loss.numel() > 1:
             loss = loss.mean()
