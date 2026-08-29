@@ -784,7 +784,11 @@ class zeroModel(BaseModel):
         active_params = 0
         
         # Embeddings (always active)
-        active_params += self.config.vocab_size * self.config.hidden_size
+        embedding_params = self.config.vocab_size * self.config.hidden_size
+        if self.config.tie_word_embeddings:
+            active_params += embedding_params  # Shared with lm_head
+        else:
+            active_params += embedding_params
         
         # Average depth (number of layers executed)
         avg_depth = routing_decision.depth_mask.float().sum(dim=-1).mean().item()
@@ -809,7 +813,9 @@ class zeroModel(BaseModel):
         active_params += count_parameters(self.merger)
         
         # LM head (always active)
-        active_params += self.config.hidden_size * self.config.vocab_size
+        if not self.config.tie_word_embeddings:
+            active_params += self.config.hidden_size * self.config.vocab_size
+        # (If tied, already counted above)
         
         return active_params
     
@@ -845,11 +851,11 @@ class zeroModel(BaseModel):
         avg_depth = routing_decision.depth_mask.float().mean().item() * self.config.num_layers
         avg_width = routing_decision.width_multiplier.mean().item() * self.config.hidden_size
         
-        # Attention: B * T^2 * H
-        flops += avg_depth * batch_size * seq_length * seq_length * avg_width
+        # Attention: 2 * B * T^2 * H (QK^T + Attn×V)
+        flops += 2.0 * avg_depth * batch_size * seq_length * seq_length * avg_width
         
-        # MLP: B * T * H * (4H)
-        flops += avg_depth * batch_size * seq_length * avg_width * (4 * avg_width)
+        # MLP: 2 * B * T * H * (4H) (up-projection + down-projection)
+        flops += 2.0 * avg_depth * batch_size * seq_length * avg_width * (4 * avg_width)
         
         # MoE: B * T * top_k * expert_dim
         flops += batch_size * seq_length * self.config.top_k_experts * int(self.config.hidden_size * self.config.expert_hidden_multiplier)

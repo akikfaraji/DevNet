@@ -1014,11 +1014,16 @@ class AdaptiveRouter(nn.Module):
             losses['balancing'] = balancing_loss * self.load_balancing_weight
         
         # 5. Efficiency loss: encourage efficiency
+        # _compute_efficiency_loss returns a constant (no gradient) because
+        # compute_efficiency() uses .item() internally. Excluded from total
+        # to avoid misleading dead loss. Track it for logging only.
         efficiency_loss = self._compute_efficiency_loss(decision)
-        losses['efficiency'] = efficiency_loss
+        losses['efficiency'] = efficiency_loss  # logged but NOT added to total
         
         # Total loss
-        total_loss = sum(losses.values())
+        # Only sum losses that provide gradient signal
+        grad_losses = {k: v for k, v in losses.items() if k != 'efficiency'}
+        total_loss = sum(grad_losses.values())
         losses['total'] = total_loss
         
         return losses

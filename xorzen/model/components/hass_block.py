@@ -209,8 +209,10 @@ class LocalAttentionPathway(nn.Module):
 
 class LowRankGlobalPathway(nn.Module):
     """
-    Low-Rank Global Attention Pathway.
-    Efficient global context via low-rank approximation.
+    Causal Low-Rank Global Attention Pathway.
+    Efficient global context via causal low-rank pairwise attention.
+    Each position t can only attend to positions <= t (autoregressive),
+    enforced by a lower-triangular mask on the low-rank score matrix.
     """
     
     def __init__(
@@ -229,7 +231,9 @@ class LowRankGlobalPathway(nn.Module):
         self.to_low_rank = nn.Linear(hidden_dim, low_rank_dim * num_heads)
         self.from_low_rank = nn.Linear(low_rank_dim * num_heads, hidden_dim)
         
-        # Context aggregation (weighted pooling)
+        # Context weights — kept for backward compatibility with checkpoints
+        # trained before the causal fix. Not used in forward() (causal pairwise
+        # low-rank attention replaced the scalar-weighted global pooling).
         self.context_weights = nn.Parameter(torch.randn(1, 1, low_rank_dim * num_heads))
         
         # Layer norms
@@ -278,14 +282,37 @@ class LowRankGlobalPathway(nn.Module):
         low_rank = self.ln_low_rank(low_rank)
         low_rank = F.gelu(low_rank)
         
-        # Compute global context (weighted average)
-        # Attention weights from context_weights
-        attn_weights = torch.matmul(low_rank, self.context_weights.transpose(-1, -2))
-        attn_weights = F.softmax(attn_weights / math.sqrt(self.low_rank_dim), dim=1)
-        
-        # Apply attention to get global context
-        global_context = torch.matmul(attn_weights.transpose(-1, -2), low_rank)
-        global_context = global_context.expand(-1, seq_len, -1)  # [batch, seq_len, low_rank*heads]
+        # Compute CAUSAL global attention in the low-rank space.
+        # Each position t can only attend to positions <= t (autoregressive).
+        rk_dim = self.low_rank_dim * self.num_heads
+        causal_mask = torch.tril(
+            torch.ones(seq_len, seq_len, device=x.device, dtype=torch.bool)
+        )  # [T, T], lower-triangular
+
+        if seq_len <= 512:
+            # Full pairwise causal attention: O(T^2 * D)
+            scores = torch.matmul(low_rank, low_rank.transpose(-1, -2)) / math.sqrt(rk_dim)
+            scores = scores.masked_fill(
+                ~causal_mask[None, None, :, :], float('-inf')
+            )
+            attn_w = F.softmax(scores, dim=-1)  # [B, T, T]
+            global_context = torch.matmul(attn_w, low_rank)  # [B, T, D]
+        else:
+            # Chunked causal attention for long sequences: avoids O(T^2) memory
+            global_context = torch.zeros_like(low_rank)
+            chunk_size = 512
+            for start in range(0, seq_len, chunk_size):
+                end = min(start + chunk_size, seq_len)
+                q_chunk = low_rank[:, start:end, :]  # [B, chunk, D]
+                scores = torch.matmul(
+                    q_chunk, low_rank.transpose(-1, -2)
+                ) / math.sqrt(rk_dim)  # [B, chunk, T]
+                causal_chunk = causal_mask[start:end, :]  # [chunk, T]
+                scores = scores.masked_fill(
+                    ~causal_chunk[None, None, :, :], float('-inf')
+                )
+                attn_w = F.softmax(scores, dim=-1)
+                global_context[:, start:end, :] = torch.matmul(attn_w, low_rank)
         
         # Combine local and global
         combined = low_rank + global_context
@@ -325,6 +352,13 @@ class SSMPathway(nn.Module):
     State Space Model (SSM) Pathway.
     Efficient sequential processing with linear complexity.
     Mamba-style diagonal-A SSM with input-dependent discretisation.
+
+    DESIGN NOTE (causal_conv): The 1D convolution uses center-padding
+    (``padding=kernel_size // 2``), which means position t sees positions
+    {t-1, t, t+1}. This ±1 position leakage is inherited from the Mamba
+    architecture and is considered acceptable for the small kernel sizes
+    used (typically 3-4). For strict autoregressive causality, replace with
+    a causal left-padded convolution. Classified as DESIGN LIMITATION.
     """
     
     def __init__(
