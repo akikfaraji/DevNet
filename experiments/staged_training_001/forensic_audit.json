@@ -1,0 +1,338 @@
+{
+  "s1": {
+    "git": "e1d8ac2",
+    "checkpoint": "/home/z/my-project/DevNet/experiments/staged_training_001/stage2_final.pt",
+    "stage": 2,
+    "step": 120,
+    "total_params": 1210959,
+    "test_mode": true,
+    "cot_enabled": true,
+    "layers": 3,
+    "experts": 2,
+    "top_k": 1,
+    "pathway_top_k": 2,
+    "width_choices": [
+      64
+    ],
+    "repro_diff": 0.0
+  },
+  "s2": {
+    "all_finite": true,
+    "different_outputs": true,
+    "samples": [
+      "..The....TheThe.",
+      "........TheThe",
+      "........The.",
+      ".......TheTheThe",
+      ".......The.."
+    ],
+    "dummy_expert": true
+  },
+  "s3": {
+    "per_input": [
+      {
+        "T": 14,
+        "depth_mean": 1.0,
+        "depth_std": 0.0,
+        "depth_min": 1.0,
+        "depth_max": 1.0,
+        "depth_unique_patterns": 1,
+        "width_unique": 1,
+        "path_entropy_mean": 1.0475949048995972,
+        "path_local": 0.0,
+        "path_lowrank": 0.2857142984867096,
+        "path_ssm": 0.7142857313156128,
+        "expert_unique": 2
+      },
+      {
+        "T": 23,
+        "depth_mean": 1.0,
+        "depth_std": 0.0,
+        "depth_min": 1.0,
+        "depth_max": 1.0,
+        "depth_unique_patterns": 1,
+        "width_unique": 1,
+        "path_entropy_mean": 1.0454778671264648,
+        "path_local": 0.0,
+        "path_lowrank": 0.17391304671764374,
+        "path_ssm": 0.8260869383811951,
+        "expert_unique": 2
+      },
+      {
+        "T": 19,
+        "depth_mean": 1.0,
+        "depth_std": 0.0,
+        "depth_min": 1.0,
+        "depth_max": 1.0,
+        "depth_unique_patterns": 1,
+        "width_unique": 1,
+        "path_entropy_mean": 1.0482804775238037,
+        "path_local": 0.0,
+        "path_lowrank": 0.21052631735801697,
+        "path_ssm": 0.7894737124443054,
+        "expert_unique": 2
+      },
+      {
+        "T": 19,
+        "depth_mean": 1.0,
+        "depth_std": 0.0,
+        "depth_min": 1.0,
+        "depth_max": 1.0,
+        "depth_unique_patterns": 1,
+        "width_unique": 1,
+        "path_entropy_mean": 1.048278570175171,
+        "path_local": 0.0,
+        "path_lowrank": 0.21052631735801697,
+        "path_ssm": 0.7894737124443054,
+        "expert_unique": 2
+      },
+      {
+        "T": 20,
+        "depth_mean": 1.0,
+        "depth_std": 0.0,
+        "depth_min": 1.0,
+        "depth_max": 1.0,
+        "depth_unique_patterns": 1,
+        "width_unique": 1,
+        "path_entropy_mean": 1.0483242273330688,
+        "path_local": 0.0,
+        "path_lowrank": 0.20000000298023224,
+        "path_ssm": 0.800000011920929,
+        "expert_unique": 2
+      }
+    ],
+    "depth_cross_std": 0.0,
+    "path_entropy_cross_std": 0.0010909720339004083,
+    "input_dependent": true
+  },
+  "s4": {
+    "pathway_top_k": 2,
+    "pathway_sparse": true,
+    "depth_per_layer": [
+      {
+        "layer": 0,
+        "active": 14,
+        "total": 14,
+        "ratio": 1.0,
+        "status": "FULL"
+      },
+      {
+        "layer": 1,
+        "active": 0,
+        "total": 14,
+        "ratio": 0.0,
+        "status": "SKIP"
+      },
+      {
+        "layer": 2,
+        "active": 0,
+        "total": 14,
+        "ratio": 0.0,
+        "status": "SKIP"
+      }
+    ],
+    "any_layer_skipped": true,
+    "depth_sparse": true,
+    "width_choices": [
+      64
+    ],
+    "width_used": [
+      0
+    ],
+    "width_sparse": false,
+    "expert_total": 2,
+    "expert_top_k": 1,
+    "expert_used": [
+      0,
+      1
+    ],
+    "expert_sparse": true,
+    "training_depth_steamask": true,
+    "training_pathway_genuine_sparse": true,
+    "training_ffn_genuine_sparse": true,
+    "dummy_expert": true
+  },
+  "s5": {
+    "total_params": 1210959,
+    "heuristic_active": 1601231,
+    "heuristic_pct": 132.22834133938474,
+    "subsystem_params": {
+      "embed": 640000,
+      "pos": 4096,
+      "blocks": 343776,
+      "router": 38475,
+      "moe": 49152,
+      "merger": 35523,
+      "final_norm": 64,
+      "lm_head": 640000,
+      "cot": 99873
+    },
+    "discrepancy_note": "Heuristic is formula-based, not runtime-measured. With test_mode=True and dummy expert, actual active params differ significantly from a real-expert model."
+  },
+  "s6": {
+    "batch_size": 1,
+    "seq_len": 14,
+    "num_runs": 5,
+    "latency_median_ms": 5.15,
+    "latency_p90_ms": 5.19,
+    "tokens_per_sec": 2717.0,
+    "param_memory_mb": 4.62,
+    "rss_before_mb": 311.02,
+    "rss_after_mb": 311.02,
+    "param_dtypes": [
+      "torch.float32"
+    ],
+    "device": "CPU",
+    "note": "test_mode=True with dummy expert. Real-expert model will be slower."
+  },
+  "s7": {
+    "skipped": true,
+    "reason": "torch 2.13 API change"
+  },
+  "s8": {
+    "A_per_token_routing": "FALSE",
+    "B_input_dependent": "PROVEN",
+    "C_different_paths_execute": "PROVEN",
+    "D_skipped_computation_savings": "UNTESTED",
+    "E_inference_savings_measured": "UNTESTED",
+    "F_quality_useful": "PARTIAL"
+  },
+  "s9": [
+    {
+      "name": "depth_collapse",
+      "category": "RESEARCH QUESTION",
+      "description": "Depth std=0.0000 (near-zero variance). All tokens routed to same depth. Cause: likely insufficient training (120 steps) + cost-aware bias pushing toward min_depth."
+    },
+    {
+      "name": "width_single_choice",
+      "category": "EXPECTED BEHAVIOR",
+      "description": "NANO_1M config has width_choices=(64,) \u2014 only 1 width. Width routing exists but has no alternative to select."
+    },
+    {
+      "name": "expert_dummy",
+      "category": "EXPECTED BEHAVIOR",
+      "description": "test_mode=True uses a single dummy nn.Linear. Real expert specialization cannot be measured."
+    },
+    {
+      "name": "cost_aware_bias",
+      "category": "DESIGN LIMITATION",
+      "description": "Cost-aware routing adds systematic bias to logits based on compute_budget. This is intentional but makes routing less dependent on input content and more on the budget hyperparameter."
+    }
+  ],
+  "s10": [
+    {
+      "name": "single_token",
+      "pass": true,
+      "detail": "shape=torch.Size([1, 1, 10000])"
+    },
+    {
+      "name": "short_seq",
+      "pass": true,
+      "detail": "shape=torch.Size([1, 3, 10000])"
+    },
+    {
+      "name": "normal_seq",
+      "pass": "tensor(True)",
+      "detail": "T=14"
+    },
+    {
+      "name": "batch_2",
+      "pass": true,
+      "detail": "shape=torch.Size([2, 14, 10000])"
+    },
+    {
+      "name": "deterministic",
+      "pass": true,
+      "detail": "diff=0.00e+00"
+    },
+    {
+      "name": "pad_tokens",
+      "pass": "tensor(True)",
+      "detail": "all-pad input finite"
+    },
+    {
+      "name": "tokenizer_roundtrip",
+      "pass": true,
+      "detail": "'The transformer architecture r'"
+    }
+  ],
+  "s11": {
+    "sppq_modules": false,
+    "param_dtypes": [
+      "torch.float32"
+    ],
+    "quantized_inference": false,
+    "conclusion": "SPPQ/QAT not active. All params float32. No compressed inference."
+  },
+  "s12": {
+    "classifications": [
+      {
+        "name": "CoT lifecycle (enable/freeze)",
+        "category": "EXPECTED BEHAVIOR",
+        "description": "CoT fix verified: disabled in Stage 1, active in Stage 2, gradients flow."
+      },
+      {
+        "name": "Pathway top_k >= 3 for NANO_1M",
+        "category": "DESIGN LIMITATION",
+        "description": "Default pathway_top_k=2, but NANO_1M config may have it set higher. When >=3, all pathways always execute \u2014 no pathway sparsity."
+      },
+      {
+        "name": "Width choices = (64,) single",
+        "category": "DESIGN LIMITATION",
+        "description": "NANO_1M has only 1 width choice. Width routing is inert \u2014 no alternative."
+      },
+      {
+        "name": "test_mode dummy expert",
+        "category": "EXPECTED BEHAVIOR",
+        "description": "test_mode=True uses a single nn.Linear instead of real experts. Real expert dispatch/specialization cannot be measured."
+      },
+      {
+        "name": "Training STE depth mask",
+        "category": "EXPECTED BEHAVIOR",
+        "description": "At training, depth uses compute-all-then-mask for STE gradient flow. At inference, genuine gather-scatter-skip is used."
+      },
+      {
+        "name": "Cost-aware routing bias",
+        "category": "DESIGN LIMITATION",
+        "description": "Systematic logit bias based on compute_budget makes routing less input-dependent and more budget-dependent."
+      },
+      {
+        "name": "Continuation.py import bug",
+        "category": "BUG",
+        "description": "xorzenTrainer vs XORZENXTrainer naming mismatch. Not in training path for this experiment."
+      },
+      {
+        "name": "CoT init overwritten",
+        "category": "DESIGN LIMITATION",
+        "description": "Model-level _init_weights overwrites CoT xavier init with N(0,0.02). Does not block training but is suboptimal."
+      },
+      {
+        "name": "Routing depth collapse",
+        "category": "RESEARCH QUESTION",
+        "description": "After 80 steps, depth routing shows near-zero per-token variance. Likely due to insufficient training + cost-aware bias."
+      },
+      {
+        "name": "Routing pathway distribution",
+        "category": "RESEARCH QUESTION",
+        "description": "Pathway distribution may be biased by cost-aware routing. Requires longer training to evaluate properly."
+      }
+    ],
+    "verdict": "ARCHITECTURAL HYPOTHESIS NOT YET DEMONSTRATED",
+    "blockers": [
+      "test_mode=True: dummy experts, no real MoE",
+      "Single width choice in NANO_1M config",
+      "1M params too small for specialization",
+      "120 steps on 30 sentences too little training",
+      "CPU-only, no GPU measurements"
+    ],
+    "what_works": [
+      "Staged training lifecycle functional",
+      "Loss decreases, gradients correct",
+      "Exact checkpoint save/restore",
+      "Deterministic reproducible inference",
+      "All correctness tests pass",
+      "4-axis routing infrastructure correct",
+      "Genuine sparse execution at inference"
+    ]
+  }
+}
