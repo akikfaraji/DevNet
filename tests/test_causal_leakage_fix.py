@@ -269,7 +269,23 @@ class TestFullModelCausality:
         assert early_diff < 1e-5, f"Full model causal leak: diff={early_diff}"
 
     def test_full_model_training_causal(self):
-        """Causal property should hold in training mode too."""
+        """Causal property should hold in training mode too.
+
+        The router uses stochastic Gumbel noise sampled from the global RNG
+        in training mode.  If we ran the two forward passes sequentially
+        without controlling the RNG, the second pass would draw *different*
+        noise for ALL positions (including the unchanged early ones), which
+        would produce different routing decisions and therefore different
+        logits — even though the computation is fully causal.
+
+        To isolate the causal property from routing stochasticity we save
+        and restore the global RNG state so both passes consume the *same*
+        Gumbel noise.  With identical noise, changing only future tokens
+        must not affect earlier positions' logits.
+
+        Proof that the diff=0.765 was RNG noise, not a causal leak:
+        restoring the exact RNG state between passes yields diff=0.
+        """
         from xorzen.config import ConfigFactory
         from xorzen.models.zero.model import zeroModel
         cfg = ConfigFactory.get_config('NANO_1M')
@@ -279,9 +295,13 @@ class TestFullModelCausality:
         model.train()
         x = torch.randint(0, cfg.vocab_size, (1, 16))
         labels = x.clone()
+        # Save RNG state before pass 1
+        rng_before = torch.get_rng_state()
         out1 = model(x, labels=labels)
         x2 = x.clone()
         x2[:, 12:] = (x2[:, 12:] + 100) % cfg.vocab_size
+        # Restore RNG so pass 2 consumes the same Gumbel noise
+        torch.set_rng_state(rng_before)
         out2 = model(x2, labels=labels)
         early_diff = (out1.logits[:, :12, :] - out2.logits[:, :12, :]).abs().max().item()
         assert early_diff < 1e-5, f"Training mode causal leak: diff={early_diff}"
