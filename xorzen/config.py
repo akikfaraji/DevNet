@@ -1926,10 +1926,17 @@ class ConfigFactory:
         """
         # Convert string to enum if needed
         if isinstance(model_size, str):
-            model_size = ModelSize(model_size)
+            # Support both enum name ("TINY_23K") and enum value ("23K")
+            try:
+                model_size = ModelSize[model_size]
+            except KeyError:
+                model_size = ModelSize(model_size)
         
         if isinstance(architecture, str):
-            architecture = ArchitectureVariant(architecture)
+            try:
+                architecture = ArchitectureVariant[architecture]
+            except KeyError:
+                architecture = ArchitectureVariant(architecture)
         
         config_data = {
             "model_size": model_size,

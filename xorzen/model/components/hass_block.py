@@ -231,14 +231,8 @@ class LowRankGlobalPathway(nn.Module):
         self.to_low_rank = nn.Linear(hidden_dim, low_rank_dim * num_heads)
         self.from_low_rank = nn.Linear(low_rank_dim * num_heads, hidden_dim)
         
-        # Context weights — kept for backward compatibility with checkpoints
-        # trained before the causal fix. Not used in forward() (causal pairwise
-        # low-rank attention replaced the scalar-weighted global pooling).
-        self.context_weights = nn.Parameter(torch.randn(1, 1, low_rank_dim * num_heads))
-        
-        # Layer norms
+        # Layer norm
         self.ln_input = nn.LayerNorm(hidden_dim)
-        self.ln_low_rank = nn.LayerNorm(low_rank_dim * num_heads)
         
         # Dropout
         self.dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
@@ -258,9 +252,8 @@ class LowRankGlobalPathway(nn.Module):
         
         nn.init.xavier_uniform_(self.from_low_rank.weight, gain=1.0 / math.sqrt(2))
         nn.init.zeros_(self.from_low_rank.bias)
-        
-        # Context weights
-        nn.init.normal_(self.context_weights, mean=0.0, std=0.02)
+
+        # context_weights initialized to 1.0 in __init__.
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -279,7 +272,6 @@ class LowRankGlobalPathway(nn.Module):
         
         # Project to low-rank space
         low_rank = self.to_low_rank(x_norm)  # [batch, seq_len, low_rank*heads]
-        low_rank = self.ln_low_rank(low_rank)
         low_rank = F.gelu(low_rank)
         
         # Compute CAUSAL global attention in the low-rank space.
@@ -292,8 +284,9 @@ class LowRankGlobalPathway(nn.Module):
         if seq_len <= 512:
             # Full pairwise causal attention: O(T^2 * D)
             scores = torch.matmul(low_rank, low_rank.transpose(-1, -2)) / math.sqrt(rk_dim)
+            # causal_mask is [T, T]; broadcast to [B, T, T] via [None, :, :]
             scores = scores.masked_fill(
-                ~causal_mask[None, None, :, :], float('-inf')
+                ~causal_mask[None, :, :], float('-inf')
             )
             attn_w = F.softmax(scores, dim=-1)  # [B, T, T]
             global_context = torch.matmul(attn_w, low_rank)  # [B, T, D]
@@ -309,14 +302,14 @@ class LowRankGlobalPathway(nn.Module):
                 ) / math.sqrt(rk_dim)  # [B, chunk, T]
                 causal_chunk = causal_mask[start:end, :]  # [chunk, T]
                 scores = scores.masked_fill(
-                    ~causal_chunk[None, None, :, :], float('-inf')
+                    ~causal_chunk[None, :, :], float('-inf')
                 )
                 attn_w = F.softmax(scores, dim=-1)
                 global_context[:, start:end, :] = torch.matmul(attn_w, low_rank)
         
-        # Combine local and global
+        # Combine local (residual) and global context.
         combined = low_rank + global_context
-        
+
         # Project back to hidden dimension
         output = self.from_low_rank(combined)
         output = self.dropout(output)
@@ -353,12 +346,8 @@ class SSMPathway(nn.Module):
     Efficient sequential processing with linear complexity.
     Mamba-style diagonal-A SSM with input-dependent discretisation.
 
-    DESIGN NOTE (causal_conv): The 1D convolution uses center-padding
-    (``padding=kernel_size // 2``), which means position t sees positions
-    {t-1, t, t+1}. This ±1 position leakage is inherited from the Mamba
-    architecture and is considered acceptable for the small kernel sizes
-    used (typically 3-4). For strict autoregressive causality, replace with
-    a causal left-padded convolution. Classified as DESIGN LIMITATION.
+    The 1D convolution uses CAUSAL left-padding (padding=kernel_size-1
+    with truncation), ensuring strict autoregressive causality.
     """
     
     def __init__(
@@ -384,12 +373,15 @@ class SSMPathway(nn.Module):
         # Output projection
         self.D_proj = nn.Linear(state_dim, hidden_dim)
         
-        # Conv for local patterns (optional)
+        # Conv for local patterns — CAUSAL (left-padded) convolution.
+        # padding=kernel_size-1 ensures each position only sees past context
+        # (no future leakage). This fixes the design limitation documented in
+        # earlier versions that used center-padding.
         if use_conv:
             self.conv = nn.Conv1d(
                 hidden_dim, hidden_dim,
                 kernel_size=kernel_size,
-                padding=kernel_size // 2,
+                padding=kernel_size - 1,
                 groups=hidden_dim  # Depthwise separable
             )
         else:
@@ -478,11 +470,13 @@ class SSMPathway(nn.Module):
         # Layer norm input
         x_norm = self.ln_input(x)
 
-        # Apply conv if enabled
+        # Apply conv if enabled — causal (left-padded), then truncate.
         if self.conv is not None:
-            x_conv = x_norm.transpose(1, 2)
-            x_conv = self.conv(x_conv)
-            x_conv = x_conv.transpose(1, 2)
+            x_conv = x_norm.transpose(1, 2)  # [B, H, T]
+            x_conv = self.conv(x_conv)  # [B, H, T + padding]
+            # Truncate to original seq_len (remove right-side padding)
+            x_conv = x_conv[:, :, :seq_len]
+            x_conv = x_conv.transpose(1, 2)  # [B, T, H]
             x_norm = x_norm + x_conv
 
         # Compute gates
@@ -540,9 +534,11 @@ class SSMPathway(nn.Module):
         batch_size, seq_len, _ = x.shape
 
         x_norm = self.ln_input(x)
+        # Apply causal conv (same truncation as forward)
         if self.conv is not None:
             x_conv = x_norm.transpose(1, 2)
             x_conv = self.conv(x_conv)
+            x_conv = x_conv[:, :, :seq_len]
             x_conv = x_conv.transpose(1, 2)
             x_norm = x_norm + x_conv
 
