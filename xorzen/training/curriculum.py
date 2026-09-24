@@ -13,7 +13,7 @@ Flow for each book:
     6. Log everything to a JSON session log
     7. Save a checkpoint after every book
 
-On CPU at ~5M parameters (IGRIS-Nano) this runs comfortably.
+On CPU at ~5M parameters (zero-Agentic-Nano) this runs comfortably.
 Estimated time: 30s - 3min per book depending on length.
 
 Usage:

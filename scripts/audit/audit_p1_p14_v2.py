@@ -471,7 +471,7 @@ def audit_p13_adaptive_halting_correct_sign():
     prop = {
         "id": "P13",
         "claim": "AdaptiveHalting.ponder_loss = mean(1 - halt_prob), penalizing "
-                 "NOT halting (encourages early exit). Opposite of the IGRIS bug.",
+                 "NOT halting (encourages early exit). Opposite of the former IGRIS bug.",
         "location": "xorzen/model/components/adaptive_halting.py:AdaptiveHalting.ponder_loss",
     }
     try:
@@ -495,7 +495,7 @@ def audit_p13_adaptive_halting_correct_sign():
         _set_status(prop, "PROVEN",
                     f"ponder_loss(all_halt)=0, ponder_loss(no_halt)=1. "
                     f"Sign is CORRECT: penalizes NOT halting, encourages early exit. "
-                    f"(Opposite of the IGRIS bug where loss += 0.01*ponder_cost penalized halting.)")
+                    f"(Former IGRIS bug was loss += 0.01*ponder_cost which penalized halting; now fixed to loss -= 0.01*ponder_cost.)")
     except Exception as e:
         _set_status(prop, "INCORRECT", f"audit failed: {e}")
     return prop

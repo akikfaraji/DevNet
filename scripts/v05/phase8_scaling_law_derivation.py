@@ -45,7 +45,7 @@ from xorzen.models.zero.variants import (
     zero_tiny_23k, zero_1M, zero_10M, zero_50M, zero_277M,
     zero_500M, zero_1_3B, zero_7B,
 )
-from xorzen.models.igris.variants import IGRIS_Nano
+from xorzen.models.zero.agentic_variants import zero_agentic_nano
 
 OUT_DIR = os.path.join(PROJ, "reports", "scaling")
 os.makedirs(OUT_DIR, exist_ok=True)

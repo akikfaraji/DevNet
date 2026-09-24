@@ -107,12 +107,12 @@ def instantiate(variant_name: str) -> Tuple[Optional[nn.Module], Dict[str, Any]]
             m = xorzen.zero_1_3B(test_mode=True)
         elif variant_name == "zero_7B":
             m = xorzen.zero_7B(test_mode=True)
-        elif variant_name == "IGRIS_Nano":
-            from xorzen.models.igris.variants import IGRIS_Nano
-            m = IGRIS_Nano()
-        elif variant_name == "IGRIS_Micro":
-            from xorzen.models.igris.variants import IGRIS_Micro
-            m = IGRIS_Micro()
+        elif variant_name == "zero_agentic_nano":
+            from xorzen.models.zero.agentic_variants import zero_agentic_nano
+            m = zero_agentic_nano()
+        elif variant_name == "zero_agentic_micro":
+            from xorzen.models.zero.agentic_variants import zero_agentic_micro
+            m = zero_agentic_micro()
         else:
             return None, {"variant": variant_name, "error": "unknown"}
         return m, info
@@ -264,8 +264,8 @@ def main():
         "zero_500M",
         "zero_1_3B",
         # "zero_7B",
-        "IGRIS_Nano",
-        "IGRIS_Micro",
+        "zero_agentic_nano",
+        "zero_agentic_micro",
     ]
     results = {}
     for v in variants:

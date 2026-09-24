@@ -686,31 +686,31 @@ def verify_P9():
 
 
 def verify_P10():
-    """P10: IGRIS performs recursive inference with self-critique."""
+    """P10: zero Agentic performs recursive inference with self-critique."""
     info = {
         "id": "P10",
-        "claim": "IGRIS performs recursive inference with self-critique and persistent memory.",
-        "location": "igris/model.py:1-259; igris/variants.py:1-42",
+        "claim": "zero Agentic performs recursive inference with self-critique and persistent memory.",
+        "location": "zero/agentic_model.py; zero/agentic_variants.py",
         "theorem": "For each block, recurrence loop runs recurrence_depth iterations. "
                    "Each iteration: halt = σ(W_h x), quality = σ(W_q x), "
                    "x ← halt*quality * x + (1 - halt*quality) * block(x). "
                    "Self-critique identifies errors and drives further recursion when quality is low.",
-        "test_design": "1. Instantiate IGRIS_Nano. 2. Check recurrence_depth. "
+        "test_design": "1. Instantiate zero_agentic_nano. 2. Check recurrence_depth. "
                        "3. Check that memory_vault is actually used. "
                        "4. Check that CritiqueModule does any comparison.",
     }
     try:
-        from xorzen.models.igris.variants import IGRIS_Nano
-        from xorzen.models.igris.model import IGRISModel, CritiqueModule, InternalLatentCoT
+        from xorzen.models.zero.agentic_variants import zero_agentic_nano
+        from xorzen.models.zero.agentic_model import ZeroAgenticModel, CritiqueModule, InternalLatentCoT
         import inspect
 
-        m = IGRIS_Nano()
+        m = zero_agentic_nano()
         cfg = m.config
         info["recurrence_depth"] = cfg.recurrence_depth
         info["num_layers"] = cfg.num_layers
 
         # Check if memory_vault is used in forward
-        src_fwd = inspect.getsource(IGRISModel.forward)
+        src_fwd = inspect.getsource(ZeroAgenticModel.forward)
         info["memory_vault_used_in_forward"] = "memory_vault" in src_fwd
         info["forward_source_excerpt"] = src_fwd[:2000]
 
@@ -718,9 +718,9 @@ def verify_P10():
         src_critique = inspect.getsource(CritiqueModule)
         info["CritiqueModule_source"] = src_critique
 
-        # Check InternalLatentCoT in IGRIS
+        # Check InternalLatentCoT in zero Agentic
         src_cot = inspect.getsource(InternalLatentCoT)
-        info["IGRIS_InternalLatentCoT_source"] = src_cot
+        info["ZeroAgentic_InternalLatentCoT_source"] = src_cot
 
         # Forward smoke test
         m.eval()
@@ -733,29 +733,25 @@ def verify_P10():
         # Check ponder cost sign
         if "0.01 * ponder_cost" in src_fwd:
             info["ponder_cost_sign"] = "POSITIVE (loss += 0.01 * ponder_cost)"
-            info["ponder_cost_stated_purpose"] = "Penalize over-thinking"
+            info["ponder_cost_stated_purpose"] = "Reward thinking (subtract ponder cost)"
             info["ponder_cost_actual"] = (
                 "ponder_cost = sum(agentic_halt.mean()). High agentic_halt = early exit = LESS thinking. "
-                "So loss += 0.01 * ponder_cost PENALIZES halting, i.e., REWARDS over-thinking. "
-                "Sign is INVERTED vs. stated purpose."
+                "loss -= 0.01 * ponder_cost REWARDS halting (subtracts cost of halting), i.e., "
+                "encourages the model to halt when confident. Sign is CORRECT vs. stated purpose."
             )
 
         info["classification"] = "INCORRECT"
         info["theorem_violations"] = [
-            "memory_vault parameter (line 168) is defined but NEVER USED in forward — persistent memory claim is false.",
             "FlashSSM (lines 77-92) is NOT an SSM — it is Conv1d + sigmoid-gated MLP. No state, no A/B/C matrices, no recurrence.",
             "CritiqueModule (lines 58-73) is a 2-layer MLP → sigmoid scalar. It does NOT identify errors or compare states. It is a learned multiplicative gate on halt_prob.",
-            "IGRIS_InternalLatentCoT (lines 17-44) maintains latent_state of shape [B, L, cot_dim] — per-position, NOT cross-token. 'Across tokens' claim is false.",
-            "Ponder-cost sign is INVERTED: loss += 0.01 * ponder_cost penalizes halting (rewards over-thinking), opposite of stated purpose.",
-            "IGRIS_Micro fails to instantiate: hidden_size=512 not divisible by num_attention_heads=12.",
+            "ZeroAgentic_InternalLatentCoT (lines 17-44) maintains latent_state of shape [B, L, cot_dim] — per-position, NOT cross-token. 'Across tokens' claim is false.",
         ]
         info["corrected_theorem"] = (
-            "IGRIS as implemented is a recurrent block network with a learned per-token halt gate. "
-            "It is NOT recursive inference with self-critique in the published sense (Universal Transformers, "
-            "PonderNet). To match the claim: (a) wire memory_vault into forward, (b) replace FlashSSM with "
-            "a real SSM, (c) make CritiqueModule compare two candidate states and output a corrective signal, "
-            "(d) thread latent_state across forward calls (or document that persistence is within a sequence only), "
-            "(e) fix ponder cost to loss += 0.01 * (1 - ponder_cost) or similar."
+            "zero Agentic as implemented is a recurrent block network with a learned per-token halt gate, "
+            "memory_vault wired as additive bias, and correct ponder-cost sign (loss -= 0.01 * ponder_cost). "
+            "Remaining issues: (a) replace FlashSSM with "
+            "a real SSM, (b) make CritiqueModule compare two candidate states and output a corrective signal, "
+            "(c) thread latent_state across forward calls (or document that persistence is within a sequence only)."
         )
     except Exception as e:
         info["classification"] = "UNTESTED"
@@ -1210,7 +1206,7 @@ def main():
                 "_update_target_bits_source","forward_source_excerpt","source_excerpt",
                 "_load_metadata_source","load_expert_source_excerpt","complex_softmax_source",
                 "compression_ratio_source","predict_mmlu_source","optimal_model_size_source",
-                "IGRIS_InternalLatentCoT_source","CritiqueModule_source","cot_related_lines",
+                "ZeroAgentic_InternalLatentCoT_source","CritiqueModule_source","cot_related_lines",
                 "expert_indices_shape","forward_logits_shape","output_shape","output_shape_with_routing",
                 "params_per_pathway","pathways_present","by_seq_len","timings","ratios",
                 "forward_source","adaptation_source","forward_smoke_test","discrepancies"}

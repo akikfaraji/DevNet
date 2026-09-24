@@ -120,8 +120,8 @@ Additional model families built on XorZen Core:
 
 | Model | Params | Context | Purpose | Status |
 -------|--------|---------|---------|--------|
-| **IGRIS_Nano** | ~50M | 2K tokens | Compact inference | Trained |
-| **IGRIS_Micro** | ~180M | 8K tokens | Consumer deployment | Trained |
+| **zero_agentic_nano** | ~50M | 2K tokens | Compact recursive inference (self-critique + memory) | Trained |
+| **zero_agentic_micro** | ~180M | 8K tokens | Consumer recursive inference | Trained |
 | **Jima_Nano** | ~50M | 2K tokens | Agentic reasoning (thought/action/critique heads) | Trained |
 | **Jima_Micro** | ~180M | 8K tokens | Agentic reasoning | Trained |
 
@@ -136,7 +136,7 @@ XorZen Core (Foundation)
     +-> libcompact  (C++ inference engine)
     +-> Greed       (trained context compression models)
     +-> Jima        (trained agentic reasoning models)
-    +-> Zero/IGRIS  (compact model variants)
+    +-> Zero/Agentic  (compact model variants with recursive inference)
     +-> Kage        (future multimodal reasoning - planned)
 
 xorvec-data (Data Pipeline)
@@ -225,8 +225,8 @@ print(f"Models available: {xorzen.list_models()}")
 m_tiny = xorzen.zero_1M(test_mode=True)
 m_10m = xorzen.zero_10M(test_mode=True)
 
-# IGRIS variants
-m_igris = xorzen.IGRIS_Nano(test_mode=True)
+# zero Agentic variants
+m_agentic = xorzen.zero_agentic_nano()
 
 # --- Tokenizer ---
 # Load a pretrained tokenizer (65k BPE variant)
@@ -533,7 +533,7 @@ Comprehensive verification, audit, and benchmark reports are available under `re
 
 - [ ] **Kage (Phase 0-4)**: Vision encoder design, multimodal fusion, training pipeline, HuggingFace publishing
 - [ ] **XorZen 12B scale validation**: Test the 12B > 60B dense hypothesis
-- [ ] **HuggingFace model cards**: Publish Zero, IGRIS, Jima, and Greed model families
+- [ ] **HuggingFace model cards**: Publish Zero, Zero Agentic, Jima, and Greed model families
 - [ ] **Eval-mode pathway diversity**: KL-to-uniform loss or temperature scheduling to break eval-mode collapse
 - [ ] **ComputeController cleanup**: Remove dead `ComputeController.py` (functionality now in `AdaptiveRouter`)
 

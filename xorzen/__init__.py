@@ -6,12 +6,13 @@ large-scale language models (LLMs) and achieving Artificial General Intelligence
 This framework emphasizes efficiency, scalability, and ease of use, offering a
 production-ready environment for researchers and developers.
 
-Version 0.2.4 - Major Architectural Upgrade:
-This version introduces significant enhancements, including a revamped
-configuration system, improved model modularity, and optimized data handling.
+Version 0.3.0 - IGRIS Rename & Wheel Fixes:
+This version renames IGRIS as zero Agentic sub-variants, fixes ponder loss sign bug,
+fixes memory_vault gradient path, fixes IGRIS_Micro num_attention_heads, and
+improves wheel build configuration.
 """
 
-__version__ = "0.2.4"
+__version__ = "0.3.0"
 __author__ = "Akik faraji"
 
 
@@ -30,9 +31,9 @@ from .models.zero import (
     zero_7B,
 )
 
-from .models.igris.variants import (
-    IGRIS_Nano,
-    IGRIS_Micro,
+from .models.zero.agentic_variants import (
+    zero_agentic_nano,
+    zero_agentic_micro,
 )
 
 from .models import (
@@ -270,8 +271,8 @@ __all__ = [
     'zero_1_3B',
     'zero_7B',
     'zero277M',  # Legacy
-    'IGRIS_Nano',
-    'IGRIS_Micro',
+    'zero_agentic_nano',
+    'zero_agentic_micro',
     'list_models',
     'get_model',
     'create_model',
