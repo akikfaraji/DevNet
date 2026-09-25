@@ -1,0 +1,551 @@
+{
+  "timestamp": "2026-09-24 09:59:03",
+  "commit": "3965336",
+  "tests": {
+    "architecture": {
+      "zero_1M": {
+        "forward_ok": true,
+        "total_params": 1004559,
+        "trainable_params": 904686,
+        "logits_shape": [
+          1,
+          32,
+          6765
+        ],
+        "loss_value": 8.81292724609375
+      },
+      "zero_10M": {
+        "forward_ok": true,
+        "total_params": 7769401,
+        "trainable_params": 7003352,
+        "logits_shape": [
+          1,
+          32,
+          10000
+        ],
+        "loss_value": 9.234685897827148
+      },
+      "zero_50M": {
+        "forward_ok": true,
+        "total_params": 17127744,
+        "trainable_params": 15795135,
+        "logits_shape": [
+          1,
+          16,
+          10000
+        ],
+        "loss_value": 9.120535850524902
+      },
+      "zero_277M": {
+        "forward_ok": true,
+        "total_params": 78309784,
+        "trainable_params": 76452375,
+        "logits_shape": [
+          1,
+          8,
+          33898
+        ],
+        "loss_value": 10.597966194152832
+      },
+      "zero_agentic_nano": {
+        "forward_ok": true,
+        "total_params": 9234584,
+        "trainable_params": 9234584,
+        "logits_shape": [
+          1,
+          32,
+          1000
+        ],
+        "loss_value": 6.966942310333252
+      }
+    },
+    "gradient": {
+      "zero_1M": {
+        "total_grad_norm": 2.490374796231843,
+        "loss": 8.654167175292969
+      },
+      "zero_10M": {
+        "total_grad_norm": 5.06656133934801,
+        "loss": 9.021689414978027
+      },
+      "zero_50M": {
+        "total_grad_norm": 9.526878082142602,
+        "loss": 9.027554512023926
+      },
+      "zero_277M": {
+        "total_grad_norm": 21.049998090325218,
+        "loss": 10.047340393066406
+      },
+      "zero_agentic_nano": {
+        "total_grad_norm": 5.954329551254297,
+        "loss": 6.967975616455078
+      }
+    },
+    "loss": {
+      "zero_1M": {
+        "loss_value": 8.829891204833984,
+        "manual_ce": 8.829840660095215
+      },
+      "zero_10M": {
+        "loss_value": 9.279906272888184,
+        "manual_ce": 9.27985668182373
+      },
+      "zero_50M": {
+        "loss_value": 9.235369682312012,
+        "manual_ce": 9.235321044921875
+      },
+      "zero_277M": {
+        "loss_value": 10.353225708007812,
+        "manual_ce": 10.353175163269043
+      },
+      "zero_agentic_nano": {
+        "loss_value": 6.96978759765625,
+        "manual_ce": 6.942855358123779
+      }
+    },
+    "data_pipeline": {
+      "tokenizers": [
+        "xorzen_agi_tokenizer_65k",
+        "zero_bpe_10k"
+      ],
+      "ok": true
+    },
+    "training_smoke": {
+      "zero_1M": {
+        "losses": [
+          8.562615394592285,
+          8.631647109985352,
+          8.58717155456543,
+          8.621760368347168,
+          8.621010780334473
+        ],
+        "grad_norms": [
+          2.446371078491211,
+          2.3410871028900146,
+          2.4564194679260254,
+          2.380723476409912,
+          2.347468137741089
+        ],
+        "loss_changed": true,
+        "initial_loss": 8.562615394592285,
+        "final_loss": 8.621010780334473
+      },
+      "zero_10M": {
+        "losses": [
+          8.979691505432129,
+          9.005760192871094,
+          8.980005264282227,
+          8.89384937286377,
+          9.050694465637207
+        ],
+        "grad_norms": [
+          5.198635101318359,
+          5.190638065338135,
+          5.019429683685303,
+          4.949564456939697,
+          4.645388603210449
+        ],
+        "loss_changed": true,
+        "initial_loss": 8.979691505432129,
+        "final_loss": 9.050694465637207
+      },
+      "zero_50M": {
+        "losses": [
+          9.05141830444336,
+          9.124646186828613,
+          8.968015670776367,
+          9.053489685058594,
+          8.999759674072266
+        ],
+        "grad_norms": [
+          9.312257766723633,
+          9.664422035217285,
+          8.932373046875,
+          8.891032218933105,
+          7.59334135055542
+        ],
+        "loss_changed": true,
+        "initial_loss": 9.05141830444336,
+        "final_loss": 8.999759674072266
+      },
+      "zero_277M": {
+        "losses": [
+          10.196369171142578,
+          10.37073802947998,
+          10.216086387634277,
+          10.310677528381348,
+          10.17763614654541
+        ],
+        "grad_norms": [
+          19.459177017211914,
+          18.73275375366211,
+          17.62704086303711,
+          14.631749153137207,
+          15.38980770111084
+        ],
+        "loss_changed": true,
+        "initial_loss": 10.196369171142578,
+        "final_loss": 10.17763614654541
+      },
+      "zero_agentic_nano": {
+        "losses": [
+          6.961909294128418,
+          6.987800121307373,
+          6.979558944702148,
+          6.978643417358398,
+          6.95175838470459
+        ],
+        "grad_norms": [
+          7.791895866394043,
+          5.256653308868408,
+          4.171647548675537,
+          3.967210292816162,
+          4.057260513305664
+        ],
+        "loss_changed": true,
+        "initial_loss": 6.961909294128418,
+        "final_loss": 6.95175838470459
+      }
+    },
+    "overfitting": {
+      "zero_1M": {
+        "initial_loss": 8.624592463175455,
+        "final_loss": 4.413236776987712,
+        "reduction": 4.211355686187743,
+        "relative_reduction": 0.4882961953470878,
+        "losses": [
+          8.624592463175455,
+          8.41788641611735,
+          8.305034001668295,
+          8.175668398539225,
+          8.066105206807455,
+          7.983709653218587,
+          7.878009001413981,
+          7.814294974009196,
+          7.714295864105225,
+          7.657465775807698,
+          7.5765994389851885,
+          7.471548716227214,
+          7.406943162282308,
+          7.321198622385661,
+          7.255833148956299,
+          7.157632350921631,
+          7.073687235514323,
+          6.991448402404785,
+          6.901004473368327,
+          6.81855312983195,
+          6.733350118001302,
+          6.638678391774495,
+          6.548876762390137,
+          6.449689706166585,
+          6.366008122762044,
+          6.2666975657145185,
+          6.180622895558675,
+          6.084590911865234,
+          6.000801722208659,
+          5.907026926676433,
+          5.832132975260417,
+          5.738731384277344,
+          5.650235493977864,
+          5.564151604970296,
+          5.478292465209961,
+          5.389916102091472,
+          5.3042629559834795,
+          5.222823619842529,
+          5.144167264302571,
+          5.068136374155681,
+          4.999625205993652,
+          4.925216515858968,
+          4.853462378184001,
+          4.781156857808431,
+          4.7226308186848955,
+          4.661580244700114,
+          4.5937784512837725,
+          4.532023111979167,
+          4.469778060913086,
+          4.413236776987712
+        ]
+      },
+      "zero_10M": {
+        "initial_loss": 8.981183687845865,
+        "final_loss": 0.2842215696970622,
+        "reduction": 8.696962118148804,
+        "relative_reduction": 0.968353662548769,
+        "losses": [
+          8.981183687845865,
+          8.412847201029459,
+          7.991259256998698,
+          7.641600926717122,
+          7.3717912038167315,
+          7.147004286448161,
+          6.94641097386678,
+          6.553843021392822,
+          6.404820601145427,
+          6.1430277824401855,
+          5.95908244450887,
+          5.738489945729573,
+          5.497007052103679,
+          5.239153226216634,
+          5.115223566691081,
+          4.868855953216553,
+          4.653050263722737,
+          4.369538942972819,
+          4.174047946929932,
+          4.036049683888753,
+          3.757183233896891,
+          3.6187523206075034,
+          3.445563554763794,
+          3.204249858856201,
+          3.0782881577809653,
+          2.8819270928700766,
+          2.6690661112467446,
+          2.5018500487009683,
+          2.345790386199951,
+          2.2124245166778564,
+          2.0651217301686606,
+          1.9112725257873535,
+          1.7564796209335327,
+          1.6171129147211711,
+          1.537200649579366,
+          1.452823281288147,
+          1.2641124725341797,
+          1.156302769978841,
+          1.0762038230895996,
+          0.962647537390391,
+          0.8994760910669962,
+          0.8232477108637491,
+          0.709297239780426,
+          0.6636878649393717,
+          0.5709102153778076,
+          0.495303471883138,
+          0.4347415268421173,
+          0.36234675844510394,
+          0.31716615955034894,
+          0.2842215696970622
+        ]
+      }
+    },
+    "causal": {
+      "zero_1M": {
+        "eval_max_diff": 0.0,
+        "eval_mean_diff": 0.0
+      },
+      "zero_10M": {
+        "eval_max_diff": 0.0,
+        "eval_mean_diff": 0.0
+      },
+      "zero_50M": {
+        "eval_max_diff": 1.1324882507324219e-06,
+        "eval_mean_diff": 1.3925482278409618e-07
+      },
+      "zero_277M": {
+        "eval_max_diff": 0.0,
+        "eval_mean_diff": 0.0
+      },
+      "zero_agentic_nano": {
+        "eval_max_diff": 0.0,
+        "eval_mean_diff": 0.0,
+        "train_max_diff": 0.0,
+        "train_mean_diff": 0.0
+      }
+    },
+    "save_load": {
+      "param_diff": 0,
+      "logits_diff": 0.0
+    },
+    "device_compat": {
+      "zero_1M": {
+        "cpu_ok": true,
+        "cuda_ok": null
+      },
+      "zero_10M": {
+        "cpu_ok": true,
+        "cuda_ok": null
+      },
+      "zero_50M": {
+        "cpu_ok": true,
+        "cuda_ok": null
+      },
+      "zero_277M": {
+        "cpu_ok": true,
+        "cuda_ok": null
+      },
+      "zero_agentic_nano": {
+        "cpu_ok": true,
+        "cuda_ok": null
+      }
+    },
+    "agentic_audit": {
+      "agentic_audit_ok": true
+    },
+    "reproducibility": {
+      "zero_1M": {},
+      "zero_agentic_nano": {
+        "max_diff": 0.0,
+        "losses": [
+          [
+            6.937294960021973,
+            6.996326446533203,
+            6.892305374145508
+          ],
+          [
+            6.937294960021973,
+            6.996326446533203,
+            6.892305374145508
+          ]
+        ]
+      }
+    },
+    "performance_claims": {
+      "audited": true
+    },
+    "wheel_colab": {
+      "installed": false
+    }
+  },
+  "findings": [
+    {
+      "severity": "WARNING",
+      "model": "zero_agentic_nano",
+      "category": "gradient",
+      "description": "Module 'action_head' ALL zero gradients - no training signal",
+      "file_ref": "",
+      "proposed_fix": ""
+    },
+    {
+      "severity": "WARNING",
+      "model": "zero_agentic_nano",
+      "category": "gradient",
+      "description": "Module 'memory_vault' ALL zero gradients - no training signal",
+      "file_ref": "",
+      "proposed_fix": ""
+    },
+    {
+      "severity": "WARNING",
+      "model": "zero_agentic_nano",
+      "category": "gradient",
+      "description": "memory_vault has NO gradient - disconnected from loss",
+      "file_ref": "xorzen/models/igris/model.py:168",
+      "proposed_fix": ""
+    },
+    {
+      "severity": "WARNING",
+      "model": "zero_agentic_nano",
+      "category": "gradient",
+      "description": "action_head has ALL zero gradients - no training signal from CE loss",
+      "file_ref": "xorzen/models/igris/model.py:53-56",
+      "proposed_fix": ""
+    },
+    {
+      "severity": "WARNING",
+      "model": "zero_agentic_nano",
+      "category": "loss",
+      "description": "F.cross_entropy called without ignore_index - padding tokens will contribute to loss and bias training",
+      "file_ref": "xorzen/models/igris/model.py:244",
+      "proposed_fix": "Add ignore_index=pad_token_id to F.cross_entropy call"
+    },
+    {
+      "severity": "WARNING",
+      "model": "zero_50M",
+      "category": "causal",
+      "description": "Minor causal leakage in eval mode (max_diff=0.000001) - may be numerical noise",
+      "file_ref": "",
+      "proposed_fix": ""
+    },
+    {
+      "severity": "WARNING",
+      "model": "zero_agentic_nano",
+      "category": "agentic",
+      "description": "memory_vault is an nn.Parameter but is NEVER used in the forward pass. It receives default gradients but contributes nothing to predictions or loss.",
+      "file_ref": "xorzen/models/igris/model.py:168",
+      "proposed_fix": "Either use memory_vault in forward (e.g., cross-attention) or make it a buffer."
+    },
+    {
+      "severity": "WARNING",
+      "model": "zero_agentic_n4o",
+      "category": "agentic",
+      "description": "action_head produces 'actions' output but actions are# NEVER used in loss computation. No gradient signal trains the action head. It is architectural scaffolding only.",
+      "file_ref": "xorzen/models/igris/model.py:234",
+      "proposed_fix": "Add auxiliary loss for action prediction, or remove from training compute."
+    },
+    {
+      "severity": "WARNING",
+      "model": "zero_agentic_nano",
+      "category": "agentic",
+      "description": "GatedLinearAttention doesn't accept attention_mask. Sequences with padding will leak information through cumsum.",
+      "file_ref": "xorzen/models/igris/model.py:94-110",
+      "proposed_fix": "Add attention_mask support to GLA, or ensure all sequences are same length."
+    },
+    {
+      "severity": "INFO",
+      "model": "all",
+      "category": "performance_claims",
+      "description": "Performance claims in README.md - label as ESTIMATED unless backed by actual runs",
+      "file_ref": "",
+      "proposed_fix": ""
+    },
+    {
+      "severity": "INFO",
+      "model": "all",
+      "category": "performance_claims",
+      "description": "Performance claims in phase11_real_data_validation.md - label as ESTIMATED unless backed by actual runs",
+      "file_ref": "",
+      "proposed_fix": ""
+    },
+    {
+      "severity": "WARNING",
+      "model": "all",
+      "category": "wheel",
+      "description": "pyproject.toml doesn't include package-data. Tokenizer files (*.json, *.meta.json) may not be included in wheel.",
+      "file_ref": "pyproject.toml",
+      "proposed_fix": "Add [tool.setuptools.package-data] section to include tokenizer files."
+    }
+  ],
+  "verdicts": {
+    "zero_1M": {
+      "verdict": "READY",
+      "critical_count": 0,
+      "warning_count": 0,
+      "criticals": [],
+      "warnings": []
+    },
+    "zero_10M": {
+      "verdict": "READY",
+      "critical_count": 0,
+      "warning_count": 0,
+      "criticals": [],
+      "warnings": []
+    },
+    "zero_50M": {
+      "verdict": "CONDITIONALLY READY",
+      "critical_count": 0,
+      "warning_count": 1,
+      "criticals": [],
+      "warnings": [
+        "Minor causal leakage in eval mode (max_diff=0.000001) - may be numerical noise"
+      ]
+    },
+    "zero_277M": {
+      "verdict": "READY",
+      "critical_count": 0,
+      "warning_count": 0,
+      "criticals": [],
+      "warnings": []
+    },
+    "zero_agentic_nano": {
+      "verdict": "CONDITIONALLY READY",
+      "critical_count": 0,
+      "warning_count": 7,
+      "criticals": [],
+      "warnings": [
+        "Module 'action_head' ALL zero gradients - no training signal",
+        "Module 'memory_vault' ALL zero gradients - no training signal",
+        "memory_vault has NO gradient - disconnected from loss",
+        "action_head has ALL zero gradients - no training signal from CE loss",
+        "F.cross_entropy called without ignore_index - padding tokens will contribute to loss and bias traini",
+        "memory_vault is an nn.Parameter but is NEVER used in the forward pass. It receives default gradients",
+        "GatedLinearAttention doesn't accept attention_mask. Sequences with padding will leak information thr"
+      ]
+    }
+  }
+}
